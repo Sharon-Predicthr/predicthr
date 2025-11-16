@@ -1,0 +1,25 @@
+name: Deploy to DEV SQL Server
+
+on:
+  push:
+    branches:
+      - DEV
+
+jobs:
+  deploy:
+    runs-on: windows-latest   # required for sqlcmd on GitHub
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install SQL Server tools (sqlcmd)
+        run: |
+          choco install sqlserver-cmdlineutils --yes
+
+      - name: Deploy SQL to DEV
+        run: |
+          sqlcmd -S ${{ secrets.DEV_DB_SERVER }} ^
+                 -d ${{ secrets.DEV_DB_NAME }} ^
+                 -U ${{ secrets.DEV_DB_USER }} ^
+                 -P ${{ secrets.DEV_DB_PASS }} ^
+                 -i database/deploy/deploy_dev.sql
