@@ -1,62 +1,35 @@
-Database Management Guide (SQL Express Compatible)
-📂 Folder Structure
-/database
-   /baseline
-   /migrations
-   /scripts
-   /deploy
-   migration_history.sql
-   README_DATABASE.md
+# PredictHR_DB — Database Structure & Migration Flow
 
-🎯 Goal
+This folder manages:
+- Full DB schema
+- Migrations
+- Default data
+- Views, functions, procedures
+- Deployment automation
+- CI/CD flows
 
-Version-controlled SQL Server Express database
+## Branch Strategy
 
-Repeatable migrations
+DEV → QA → MAIN (PROD)
 
-Environment-based deployments (DEV/QA/MAIN)
+Only migrations are merged upward.
+No direct edits on QA/MAIN.
 
-Ability to create a fresh DB in seconds
+## Local Developer Setup
 
-CI/CD automation with GitHub Actions
+1. Install SQL Express
+2. Clone repo
+3. Run:
 
-🚀 How to Create a New Local Database
-1. Create baseline schema:
-sqlcmd -S .\SQLEXPRESS -i database/baseline/schema.sql
-sqlcmd -S .\SQLEXPRESS -i database/baseline/data.sql
+PowerShell:
+  scripts/run_local_migrations.ps1
 
-2. Run migrations:
-powershell.exe -File database/scripts/run_migrations.ps1
+or Linux/Mac:
+  scripts/run_local_migrations.sh
 
-🔧 How to Add a Migration
+## CI/CD
 
-Create a new file in /database/migrations:
-
-0011_add_new_view.sql
-
-
-Use template:
-
-IF NOT EXISTS (SELECT 1 FROM MigrationHistory WHERE MigrationName = '0011_add_new_view')
-BEGIN
-
--- SQL CODE HERE
-
-INSERT INTO MigrationHistory(MigrationName) VALUES('0011_add_new_view');
-END;
-
-
-Commit + push → CI/CD deploys automatically.
-
-🔄 Branch-to-Database Relation
-Branch	DB	Description
-dev	MyAppDB_DEV	All new migrations
-qa	MyAppDB_QA	Stable migrations under testing
-main	MyAppDB	Production-ready migrations
-🧪 CI/CD
-
-DEV → Automatic migrations in GitHub Runner
-
-QA → Automatic migrations
-
-MAIN → Runs deploy_prod.ps1
+GitHub Actions runs:
+- validate SQL
+- apply migrations to DEV/QA
+- create build DB from scratch
