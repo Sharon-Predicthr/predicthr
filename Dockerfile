@@ -4,11 +4,11 @@ USER root
 
 ENV ACCEPT_EULA=Y
 
-# חייבים להכניס סיסמה בזמן build כי הסביבה תוחלף ב-runtime
+# מאפשר החלפת סיסמה בריצה דרך ENV
 ARG MSSQL_SA_PASSWORD=TempPass123!
 ENV MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD
 
-# התקנת sqlcmd (חובה!)
+# התקנת sqlcmd (חובה)
 RUN apt-get update && \
     apt-get install -y curl gnupg && \
     curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
@@ -25,9 +25,14 @@ COPY ./database/migration /db/migration
 COPY ./database/objects /db/objects
 COPY ./database/seed-data /db/seed-data
 
+# init script
 COPY ./docker/sqlserver/init-db.sh /db/init-db.sh
 RUN chmod +x /db/init-db.sh
 
+# wrapper שמפעיל גם SQL וגם init-db
+COPY ./docker/sqlserver/entrypoint-wrapper.sh /entrypoint-wrapper.sh
+RUN chmod +x /entrypoint-wrapper.sh
+
 USER mssql
 
-ENTRYPOINT ["/bin/bash", "/db/init-db.sh"]
+ENTRYPOINT ["/entrypoint-wrapper.sh"]
