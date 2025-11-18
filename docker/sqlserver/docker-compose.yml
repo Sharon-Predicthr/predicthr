@@ -1,15 +1,19 @@
-version: "3.9"
+version: '3.9'
 
 services:
-  sqlserver:
-    build: .
-    container_name: dev-sql
+  predict_hr_sql:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: predict-hr-sql
     environment:
-      ACCEPT_EULA: "Y"
-      SA_PASSWORD: "YourStrong!Passw0rd"
-      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=sa
+      - sa=sa
     ports:
       - "1433:1433"
     volumes:
-      - ./../..:/db   # כל תיקיית הפרויקט זמינה
-    entrypoint: ["/bin/bash", "/db/docker/sqlserver/init-db.sh"]
+      - mssql_data:/var/opt/mssql
+
+volumes:
+  mssql_data:
