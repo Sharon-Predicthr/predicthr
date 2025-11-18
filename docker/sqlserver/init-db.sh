@@ -5,13 +5,11 @@ echo "==========================================="
 echo "   Environment selected: $ENVIRONMENT"
 echo "==========================================="
 
-echo "Waiting for SQL Server to start..."
-sleep 20
-
-# Wait until SQL is ready
+# Wait until SQL Server responds
 RETRIES=30
-until /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1" >/dev/null 2>&1
-do
+echo "Waiting for SQL Server to be available..."
+
+until /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1" >/dev/null 2>&1; do
     echo "SQL not ready... ($RETRIES retries left)"
     sleep 2
     RETRIES=$((RETRIES-1))
@@ -24,8 +22,9 @@ done
 
 echo "SQL Server is ready."
 
+
 ###########################################################
-# BUILD (per environment)
+# BUILD
 ###########################################################
 
 BUILD_SCRIPT="/db/deploy/$ENVIRONMENT/build-dev-db.sql"
@@ -43,42 +42,37 @@ echo "Running build script: $BUILD_SCRIPT"
 
 
 ###########################################################
-# OBJECTS: tables, functions, procedures, views
+# OBJECTS
 ###########################################################
 
-echo "Applying TABLES..."
-for f in /db/objects/tables/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+apply_folder() {
+  local title="$1"
+  local folder="$2"
 
-echo "Applying FUNCTIONS..."
-for f in /db/objects/functions/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+  echo "Applying $title..."
 
-echo "Applying STORED PROCEDURES..."
-for f in /db/objects/"stored procedures"/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+  shopt -s nullglob
+  for f in "$folder"/*.sql; do
+    echo "Running $f"
+    /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
+  done
+}
 
-echo "Applying VIEWS..."
-for f in /db/objects/views/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+apply_folder "TABLES"          "/db/objects/tables"
+apply_folder "FUNCTIONS"       "/db/objects/functions"
+apply_folder "STORED PROCEDURES" "/db/objects/stored procedures"
+apply_folder "VIEWS"           "/db/objects/views"
 
 
 ###########################################################
-# MIGRATIONS per environment
+# MIGRATIONS
 ###########################################################
 
 MIGRATIONS_FOLDER="/db/migration/$ENVIRONMENT"
 
 if [ -d "$MIGRATIONS_FOLDER" ]; then
   echo "Running migrations in: $MIGRATIONS_FOLDER"
+  shopt -s nullglob
   for f in "$MIGRATIONS_FOLDER"/*.sql; do
     echo "Running migration: $f"
     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
@@ -89,7 +83,7 @@ fi
 
 
 ###########################################################
-# SEED per environment
+# SEED
 ###########################################################
 
 SEED_FILE="/db/seed-data/${ENVIRONMENT}_seed.sql"
@@ -101,8 +95,7 @@ else
   echo "No seed file found for environment $ENVIRONMENT"
 fi
 
+
 echo "==========================================="
 echo "    DATABASE INITIALIZATION COMPLETED"
 echo "==========================================="
-
-tail -f /dev/null
