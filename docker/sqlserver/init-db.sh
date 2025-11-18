@@ -4,13 +4,11 @@ set -e
 echo "Starting SQL Server..."
 /opt/mssql/bin/sqlservr &
 
-# Wait for SQL Server
-echo "Waiting for SQL Server to be available..."
-sleep 15
+echo "Waiting for SQL Server to start..."
+sleep 20
 
-echo "Running base DB script..."
+echo "Running base DB creation (objects)..."
 /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$sa" -i /db/database/deploy/build-dev-db.sql
-
 
 echo "Running migrations..."
 for file in $(ls /db/database/migrations/*.sql | sort); do
@@ -18,5 +16,5 @@ for file in $(ls /db/database/migrations/*.sql | sort); do
     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$sa" -i "$file"
 done
 
-echo "=== ALL Done ==="
+echo "All done."
 wait
