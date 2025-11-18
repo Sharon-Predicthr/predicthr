@@ -1,9 +1,8 @@
-
 services:
   predict_hr_sql:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./docker/sqlserver/Dockerfile
     container_name: predict-hr-sql
     environment:
       - ACCEPT_EULA=Y
