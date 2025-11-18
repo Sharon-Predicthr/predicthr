@@ -15,8 +15,7 @@ COPY ./database/seed-data /db/seed-data
 COPY ./docker/sqlserver/init-db.sh /db/init-db.sh
 RUN chmod +x /db/init-db.sh
 
-# ENTRYPOINT אחיד — Shell
-ENTRYPOINT ["/bin/bash", "-c"]
+USER mssql
 
-# CMD — מפעיל את sqlservr ברקע + init-db
-CMD "/opt/mssql/bin/sqlservr & /db/init-db.sh"
+# תבנית רשמית העובדת תמיד: sqlservr כתהליך ראשי + init script ברקע
+CMD /bin/bash -c "/db/init-db.sh & /opt/mssql/bin/sqlservr"
