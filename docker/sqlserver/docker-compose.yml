@@ -1,8 +1,8 @@
 services:
   predict_hr_sql:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..                # ← שורש הפרויקט
+      dockerfile: docker/sqlserver/Dockerfile
 
     container_name: predict-hr-sql
 
