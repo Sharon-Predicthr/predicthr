@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   predict_hr_sql:
     build:
