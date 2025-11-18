@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  sqlserver:
+    build: .
+    container_name: dev-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./../..:/db   # כל תיקיית הפרויקט זמינה
+    entrypoint: ["/bin/bash", "/db/docker/sqlserver/init-db.sh"]
