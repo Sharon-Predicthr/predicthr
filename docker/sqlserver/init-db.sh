@@ -1,15 +1,22 @@
 #!/bin/bash
-echo "Waiting for SQL Server to start..."
-sleep 20
+set -e
 
-echo "Running database initialization script..."
+echo "Starting SQL Server..."
+/opt/mssql/bin/sqlservr &
 
-sqlcmd -S localhost,1433 \
-    -U sa \
-    -P "$MSSQL_SA_PASSWORD" \
-    -i /db/database/deploy/build-dev-db.sql
+# Wait for SQL Server
+echo "Waiting for SQL Server to be available..."
+sleep 15
 
-echo "Database initialization completed."
+echo "Running base DB script..."
+/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$sa" -i /db/database/deploy/build-dev-db.sql
 
-# שמירת השרת בחיים
-/opt/mssql/bin/sqlservr
+
+echo "Running migrations..."
+for file in $(ls /db/database/migrations/*.sql | sort); do
+    echo "Applying migration: $file"
+    /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$sa" -i "$file"
+done
+
+echo "=== ALL Done ==="
+wait
