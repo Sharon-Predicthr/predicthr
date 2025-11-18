@@ -1,27 +1,17 @@
 services:
   predict_hr_sql:
     build:
-      context: ../..                # ← שורש הפרויקט
-      dockerfile: docker/sqlserver/Dockerfile
-
+      context: .
+      dockerfile: Dockerfile
     container_name: predict-hr-sql
-
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "P@ssw0rd123!"
-      ENVIRONMENT: "${ENVIRONMENT}"
-
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=sa
+      - ENVIRONMENT=${ENVIRONMENT}
     ports:
       - "1433:1433"
-
     volumes:
       - mssql_data:/var/opt/mssql
-
-    healthcheck:
-      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "sa", "-Q", "SELECT 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
 volumes:
   mssql_data:
