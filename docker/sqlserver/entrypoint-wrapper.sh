@@ -7,5 +7,5 @@ set -e
 # Run your initialization script
 /db/init-db.sh
 
-# Keep container running
+# Keep container alive
 wait
