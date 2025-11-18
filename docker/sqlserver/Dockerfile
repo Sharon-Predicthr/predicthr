@@ -1,16 +1,23 @@
 FROM mcr.microsoft.com/mssql/server:2022-latest
 
+USER root
+
 ENV ACCEPT_EULA=Y
 ENV MSSQL_SA_PASSWORD=sa
 
-# Create working folder
+# Working folder
 RUN mkdir -p /db
 
-# Copy everything from ./docker/sqlserver to /db
-COPY . /db
+# Copy environment-specific DB scripts
+COPY ./deploy/database /db/deploy
+COPY ./database/objects /db/objects
+COPY ./database/migration /db/migration
+COPY ./database/seed-data /db/seed-data
 
-# Make scripts executable
+# Copy init script
+COPY ./docker/sqlserver/init-db.sh /db/init-db.sh
 RUN chmod +x /db/init-db.sh
 
-# Start SQL Server, run initialization
+USER mssql
+
 CMD ["/bin/bash", "/db/init-db.sh"]
