@@ -17,5 +17,4 @@ RUN chmod +x /db/init-db.sh
 
 USER mssql
 
-# תבנית רשמית העובדת תמיד: sqlservr כתהליך ראשי + init script ברקע
-CMD /bin/bash -c "/db/init-db.sh & /opt/mssql/bin/sqlservr"
+CMD /bin/bash -c "/opt/mssql/bin/sqlservr & sleep 20 && /db/init-db.sh"
