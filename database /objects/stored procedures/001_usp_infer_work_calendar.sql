@@ -6,11 +6,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-IF OBJECT_ID('dbo.usp_infer_work_calendar', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_infer_work_calendar;
-GO
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_infer_work_calendar]
   @client_id             NVARCHAR(50),
   @workday_threshold_pct INT = NULL   -- if NULL → read from risk_config (client→global→default 50)
