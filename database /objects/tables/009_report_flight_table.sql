@@ -1,5 +1,8 @@
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.report_flight') AND type = 'U')
 BEGIN
+SET QUOTED_IDENTIFIER ON;
+GO
+	
   CREATE TABLE dbo.report_flight
   (
     client_id           NVARCHAR(50)  NOT NULL,
@@ -18,5 +21,6 @@ BEGIN
   );
   CREATE INDEX IX_report_flight_client_score
     ON dbo.report_flight(client_id, risk_score DESC, emp_id);
+
 
 END
