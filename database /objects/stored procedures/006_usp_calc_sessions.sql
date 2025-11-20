@@ -6,12 +6,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-IF OBJECT_ID('dbo.usp_calc_sessions', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_calc_sessions;
-GO
-
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_calc_sessions]
   @client_id         NVARCHAR(50),
   @in_fallback_time  TIME(0) = '09:00',
