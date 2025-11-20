@@ -1,8 +1,8 @@
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.emp_day_legit') AND type = 'U')
-BEGIN
 SET QUOTED_IDENTIFIER ON;
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.emp_day_legit') AND type = 'U')
+BEGIN
 CREATE TABLE dbo.emp_day_legit
 (
   client_id        NVARCHAR(50)  NOT NULL,
@@ -20,6 +20,6 @@ CREATE TABLE dbo.emp_day_legit
 
   CREATE INDEX IX_legit_date_emp
 	ON dbo.emp_day_legit(client_id, calendar_date, emp_id);
-
-
 END
+GO
+
