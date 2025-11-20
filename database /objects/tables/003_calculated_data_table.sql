@@ -1,5 +1,8 @@
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.calculated_data') AND type = 'U')
 BEGIN
+SET QUOTED_IDENTIFIER ON;
+GO
+  
   CREATE TABLE dbo.calculated_data
   (
     client_id        NVARCHAR(50)  NOT NULL,
@@ -49,5 +52,6 @@ BEGIN
   );
   CREATE UNIQUE INDEX UX_calculated_data_client_emp
     ON dbo.calculated_data(client_id, emp_id);
+
 
 END
