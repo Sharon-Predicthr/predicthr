@@ -7,12 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-IF OBJECT_ID('dbo.usp_detect_legit_absences', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_detect_legit_absences;
-GO
-
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_detect_legit_absences]
   @client_id NVARCHAR(50),
   @pto_min_block_days        INT   = NULL,
