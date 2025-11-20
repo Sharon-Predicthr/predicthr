@@ -7,12 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-IF OBJECT_ID('dbo.usp_update_adjusted_metrics', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_update_adjusted_metrics;
-GO
-
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_update_adjusted_metrics]
   @client_id NVARCHAR(50),
   @confidence_threshold FLOAT = NULL   -- optional, unused if no legit_absences table
