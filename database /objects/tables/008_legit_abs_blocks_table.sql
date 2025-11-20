@@ -1,5 +1,8 @@
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.legit_abs_blocks') AND type = 'U')
 BEGIN
+SET QUOTED_IDENTIFIER ON;
+GO
+  
 CREATE TABLE dbo.legit_abs_blocks
 (
   client_id        NVARCHAR(50)  NOT NULL,
@@ -16,5 +19,6 @@ CREATE TABLE dbo.legit_abs_blocks
 );
   CREATE INDEX IX_legit_abs_blocks_client_emp_block_start
     ON dbo.legit_abs_blocks(client_id, emp_id, block_start);
+
 
 END
