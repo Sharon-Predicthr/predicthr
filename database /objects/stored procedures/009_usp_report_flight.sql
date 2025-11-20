@@ -7,10 +7,6 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-IF OBJECT_ID('dbo.usp_report_flight', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_report_flight;
-GO
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_report_flight]
   @client_id NVARCHAR(50)
 AS
