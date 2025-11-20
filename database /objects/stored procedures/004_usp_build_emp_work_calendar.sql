@@ -7,11 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-IF OBJECT_ID('dbo.usp_build_emp_work_calendar', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_build_emp_work_calendar;
-GO
-
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_build_emp_work_calendar]
   @client_id NVARCHAR(50)
 AS
