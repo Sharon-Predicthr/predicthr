@@ -299,22 +299,22 @@ BEGIN
   WHERE rc.client_id IS NULL;
 
 -- downstream pipeline (safe order)
-EXEC dbo.sp_calc_sessions           @client_id=@client_id, @in_fallback_time=@in_fallback_time, @out_fallback_time=@out_fallback_time;
-EXEC dbo.sp_infer_work_calendar     @client_id=@client_id;
-EXEC dbo.sp_build_dept_calendar     @client_id=@client_id;
-EXEC dbo.sp_detect_legit_absences   @client_id=@client_id;
+EXEC dbo.usp_calc_sessions           @client_id=@client_id, @in_fallback_time=@in_fallback_time, @out_fallback_time=@out_fallback_time;
+EXEC dbo.usp_infer_work_calendar     @client_id=@client_id;
+EXEC dbo.usp_build_dept_calendar     @client_id=@client_id;
+EXEC dbo.usp_detect_legit_absences   @client_id=@client_id;
 
 -- NOW build emp-specific working days from the finalized windows
-EXEC dbo.sp_build_emp_work_calendar @client_id=@client_id;
+EXEC dbo.usp_build_emp_work_calendar @client_id=@client_id;
 
 -- build metrics first
-EXEC dbo.sp_calc_metrics            @client_id=@client_id;
-EXEC dbo.sp_update_adjusted_metrics @client_id=@client_id;
+EXEC dbo.usp_calc_metrics            @client_id=@client_id;
+EXEC dbo.usp_update_adjusted_metrics @client_id=@client_id;
 
 -- reports that only read
-EXEC dbo.sp_report_flight           @client_id=@client_id;
-EXEC dbo.sp_report_integrity        @client_id=@client_id;
-EXEC dbo.sp_report_workload         @client_id=@client_id;
+EXEC dbo.usp_report_flight           @client_id=@client_id;
+EXEC dbo.usp_report_integrity        @client_id=@client_id;
+EXEC dbo.usp_report_workload         @client_id=@client_id;
     ---------------------------------------------------------------------------
   -- 7) Summary (light)
   ---------------------------------------------------------------------------
