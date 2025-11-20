@@ -7,12 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-IF OBJECT_ID('dbo.usp_report_workload', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_report_workload;
-GO
-
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_report_workload]
   @client_id NVARCHAR(50)
 AS
