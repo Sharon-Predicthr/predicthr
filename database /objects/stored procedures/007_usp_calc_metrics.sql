@@ -6,11 +6,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-IF OBJECT_ID('dbo.usp_calc_metrics', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_calc_metrics;
-GO
-
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_calc_metrics]
   @client_id NVARCHAR(50)
 AS
