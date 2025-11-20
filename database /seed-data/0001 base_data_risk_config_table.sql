@@ -40,4 +40,6 @@ INSERT INTO dbo.risk_config (client_id, config_key, config_value) VALUES
 	(NULL, N'sick_max_block_days',         '3'),    -- Maximum number of days for a sick leave block
 	(NULL, N'legit_conf_full_exclude_min', '0.6'),  -- Minimum percentage for a legitimate conflict to fully exclude
 	(NULL, N'legit_conf_partial_min',      '0.3'),  -- Minimum percentage for a legitimate conflict to partially exclude
+
 	(NULL, N'baseline_min_days',           '15');   -- Minimum number of days required for the baseline period
+GO
