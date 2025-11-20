@@ -1,6 +1,7 @@
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.emp_work_calendar') AND type = 'U')
 BEGIN
-
+SET QUOTED_IDENTIFIER ON;
+GO
   CREATE TABLE dbo.emp_work_calendar
   (
     client_id      NVARCHAR(50)   NOT NULL,
@@ -13,5 +14,6 @@ BEGIN
   );
 
   CREATE INDEX IX_emp_work_calendar_emp ON dbo.emp_work_calendar(emp_id, calendar_date);
+
 
 END
