@@ -54,19 +54,19 @@ PRINT 'Applying base objects...';
 --------------------------------------------------------
 -- 5. STORED PROCEDURES
 --------------------------------------------------------
-:r /db/objects/stored procedures/001_usp_infer_work_calendar.sql
-:r /db/objects/stored procedures/002_usp_build_dept_calendar.sql
-:r /db/objects/stored procedures/003_usp_detect_legit_absences.sql
-:r /db/objects/stored procedures/004_usp_build_emp_work_calendar.sql
-:r /db/objects/stored procedures/005_usp_update_adjusted_metrics.sql
-:r /db/objects/stored procedures/006_usp_calc_sessions.sql
-:r /db/objects/stored procedures/007_usp_calc_metrics.sql
-:r /db/objects/stored procedures/008_usp_report_window.sql
-:r /db/objects/stored procedures/009_usp_report_flight.sql
-:r /db/objects/stored procedures/010_usp_report_integrity.sql
-:r /db/objects/stored procedures/011_usp_report_workload.sql
-:r /db/objects/stored procedures/012_usp_report_sessions.sql
-:r /db/objects/stored procedures/013_usp_load_client_data.sql
+:r /db/objects/stored_procedures/001_usp_infer_work_calendar.sql
+:r /db/objects/stored_procedures/002_usp_build_dept_calendar.sql
+:r /db/objects/stored_procedures/003_usp_detect_legit_absences.sql
+:r /db/objects/stored_procedures/004_usp_build_emp_work_calendar.sql
+:r /db/objects/stored_procedures/005_usp_update_adjusted_metrics.sql
+:r /db/objects/stored_procedures/006_usp_calc_sessions.sql
+:r /db/objects/stored_procedures/007_usp_calc_metrics.sql
+:r /db/objects/stored_procedures/008_usp_report_window.sql
+:r /db/objects/stored_procedures/009_usp_report_flight.sql
+:r /db/objects/stored_procedures/010_usp_report_integrity.sql
+:r /db/objects/stored_procedures/011_usp_report_workload.sql
+:r /db/objects/stored_procedures/012_usp_report_sessions.sql
+:r /db/objects/stored_procedures/013_usp_load_client_data.sql
 
 PRINT '=== Base DB created — migrations will run from shell ===';
 GO
