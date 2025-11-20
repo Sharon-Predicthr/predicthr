@@ -1,5 +1,8 @@
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.report_workload') AND type = 'U')
 BEGIN
+
+SET QUOTED_IDENTIFIER ON;
+GO
   CREATE TABLE dbo.report_workload
   (
     client_id           NVARCHAR(50)  NOT NULL,
@@ -18,6 +21,7 @@ BEGIN
   );
   CREATE INDEX IX_report_workload_client_score
     ON dbo.report_workload(client_id, risk_score DESC, emp_id);
+
 
 
 END
