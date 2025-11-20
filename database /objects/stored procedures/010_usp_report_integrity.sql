@@ -8,10 +8,6 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-IF OBJECT_ID('dbo.usp_report_integrity', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.usp_report_integrity;
-GO
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_report_integrity]
   @client_id NVARCHAR(50)
 AS
