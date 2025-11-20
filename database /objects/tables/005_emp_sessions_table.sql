@@ -1,6 +1,8 @@
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.emp_sessions') AND type = 'U')
 BEGIN
-
+SET QUOTED_IDENTIFIER ON;
+GO
+	
   CREATE TABLE dbo.emp_sessions
   (
     client_id      NVARCHAR(50)  NOT NULL,
@@ -19,5 +21,6 @@ BEGIN
 
   CREATE INDEX IX_sessions_client_date_emp
 	ON dbo.emp_sessions(client_id, session_start) INCLUDE(emp_id);
+
 
 END
