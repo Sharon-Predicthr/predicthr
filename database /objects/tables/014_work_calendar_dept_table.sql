@@ -1,8 +1,8 @@
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.work_calendar_dept') AND type = 'U')
-BEGIN
-
 SET QUOTED_IDENTIFIER ON;
 GO
+  
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.work_calendar_dept') AND type = 'U')
+BEGIN
   
 CREATE TABLE dbo.work_calendar_dept
 (
@@ -19,8 +19,7 @@ CREATE TABLE dbo.work_calendar_dept
   CREATE INDEX IX_work_calendar_dept_client_calendar_department
     ON dbo.work_calendar_dept(client_id, calendar_date, department)
     INCLUDE(dept_present, dept_active, dept_coverage_pct, is_workday_dept);
-
-
-
-
 END
+
+GO
+
