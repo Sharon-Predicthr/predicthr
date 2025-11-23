@@ -83,16 +83,15 @@ BEGIN
   );
 
   DECLARE @sql NVARCHAR(MAX) =
-    N'BULK INSERT #raw
+       N'BULK INSERT #raw
        FROM ' + QUOTENAME(@attendance_csv_path,'''') + N'
        WITH (
          DATAFILETYPE = ''char'',
-         CODEPAGE = ''65001'',
          FIELDTERMINATOR = '','',
-         ROWTERMINATOR   = ' + QUOTENAME(@row_terminator,'''') + N',
+         ROWTERMINATOR  = ''0x0A'',     -- LF, works for both Linux and Windows (also accepts CRLF)
          KEEPNULLS,
          TABLOCK' +
-         CASE WHEN @has_header=1 THEN N', FIRSTROW = 2' ELSE N'' END + N'
+         CASE WHEN @has_header = 1 THEN N', FIRSTROW = 2' ELSE N'' END + N'
        );';
 
   EXEC sys.sp_executesql @sql;
