@@ -1,4 +1,7 @@
- /* ---- GLOBAL DEFAULTS (client_id = NULL) ---- */
+PRINT 'SEED STARTED';
+GO
+
+/* ---- GLOBAL DEFAULTS (client_id = NULL) ---- */
   INSERT INTO dbo.risk_config(client_id, config_key, config_value) VALUES
     (NULL, 'calendar_work_threshold_pct', '30'),
     (NULL, 'short_session_minutes',       '180'),
