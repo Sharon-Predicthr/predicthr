@@ -90,19 +90,17 @@ SEED_FILE="/db/seed-data/${ENVIRONMENT}_seed.sql"
 if [ -f "$SEED_FILE" ]; then
   echo "DEBUG: SEED FILE FOUND: $SEED_FILE"
 
-  # Debug query BEFORE running seed file (NO -i here)
   /opt/mssql-tools/bin/sqlcmd \
       -S localhost -U sa -P "$MSSQL_SA_PASSWORD" \
+      -d PredictHR_DEV \
       -Q "PRINT 'SEED DEBUG: starting'; SELECT DB_NAME() AS current_db;"
 
   echo "Running seed: $SEED_FILE"
 
-  # Actual seed execution (NO -Q here)
   /opt/mssql-tools/bin/sqlcmd \
       -S localhost -U sa -P "$MSSQL_SA_PASSWORD" \
+      -d PredictHR_DEV \
       -i "$SEED_FILE"
-else
-  echo "No seed file found for environment $ENVIRONMENT"
 fi
 
 echo "==========================================="
