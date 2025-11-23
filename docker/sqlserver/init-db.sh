@@ -87,9 +87,10 @@ fi
 ###########################################################
 
 SEED_FILE="/db/seed-data/${ENVIRONMENT}_seed.sql"
+echo "DEBUG: Running seed: $SEED_FILE"
 if [ -f "$SEED_FILE" ]; then
   echo "Running seed: $SEED_FILE"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$SEED_FILE"
+  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$SEED_FILE" -Q "PRINT 'Seed running'; SELECT DB_NAME(); SELECT COUNT(*) FROM sys.objects"
 else
   echo "No seed file found for environment $ENVIRONMENT"
 fi
