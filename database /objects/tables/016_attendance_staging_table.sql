@@ -1,5 +1,7 @@
-IF OBJECT_ID('dbo.attendance_staging', 'U') IS NOT NULL
-    DROP TABLE dbo.attendance_staging;
+SET QUOTED_IDENTIFIER ON;
+GO
+
+IF OBJECT_ID('dbo.attendance_staging', 'U') IS NOT NULL DROP TABLE dbo.attendance_staging;
 GO
 
 CREATE TABLE dbo.attendance_staging (
