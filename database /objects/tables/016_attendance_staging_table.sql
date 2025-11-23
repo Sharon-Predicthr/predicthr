@@ -1,8 +1,8 @@
 SET QUOTED_IDENTIFIER ON;
 GO
-
-IF OBJECT_ID('dbo.attendance_staging', 'U') IS NOT NULL DROP TABLE dbo.attendance_staging;
-GO
+  
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.attendance_staging') AND type = 'U')
+BEGIN
 
 CREATE TABLE dbo.attendance_staging (
     batch_id   UNIQUEIDENTIFIER NOT NULL,
@@ -22,8 +22,9 @@ CREATE TABLE dbo.attendance_staging (
     row_number BIGINT IDENTITY(1,1) NOT NULL,
     CONSTRAINT PK_attendance_staging PRIMARY KEY (batch_id, row_number)
 );
-GO
 
 CREATE INDEX IX_attendance_staging_client
     ON dbo.attendance_staging(client_id, batch_id);
+END
+    
 GO
