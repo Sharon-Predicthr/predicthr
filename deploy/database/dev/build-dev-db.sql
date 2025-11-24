@@ -43,8 +43,8 @@ PRINT 'Applying base objects...';
 :r /db/objects/tables/013_risk_interventions_table.sql
 :r /db/objects/tables/014_work_calendar_dept_table.sql
 :r /db/objects/tables/015_work_calendar_table.sql
-:r /db/objects/tables/016__attendance_staging_table.sql
-
+:r /db/objects/tables/016_attendance_staging_table.sql
+            
 --------------------------------------------------------
 -- 4. VIEWS
 --------------------------------------------------------
