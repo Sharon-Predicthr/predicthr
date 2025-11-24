@@ -43,6 +43,7 @@ PRINT 'Applying base objects...';
 :r /db/objects/tables/013_risk_interventions_table.sql
 :r /db/objects/tables/014_work_calendar_dept_table.sql
 :r /db/objects/tables/015_work_calendar_table.sql
+:r /db/objects/tables/016__attendance_staging_table.sql
 
 --------------------------------------------------------
 -- 4. VIEWS
@@ -67,6 +68,7 @@ PRINT 'Applying base objects...';
 :r /db/objects/stored_procedures/011_usp_report_workload.sql
 :r /db/objects/stored_procedures/012_usp_report_sessions.sql
 :r /db/objects/stored_procedures/013_usp_load_client_data.sql
+:r /db/objects/stored_procedures/014_usp_load_client_data_v2.sql
 
 PRINT '=== Base DB created — migrations will run from shell ===';
 GO
