@@ -64,8 +64,8 @@ PRINT 'Applying base objects...';
 :r /db/objects/stored_procedures/007_usp_calc_metrics.sql
 :r /db/objects/stored_procedures/008_usp_report_window.sql
 :r /db/objects/stored_procedures/009_usp_calc_flight.sql
-:r /db/objects/stored_procedures/010_usp_calc_burnout.sql
-:r /db/objects/stored_procedures/011_usp_report_workload.sql
+:r /db/objects/stored_procedures/010_usp_calc_integrity.sql    
+:r /db/objects/stored_procedures/011_usp_calc_burnout.sql
 :r /db/objects/stored_procedures/012_usp_report_sessions.sql
 :r /db/objects/stored_procedures/013_usp_load_client_data.sql
 :r /db/objects/stored_procedures/014_usp_load_client_data_v2.sql
