@@ -1,5 +1,5 @@
 
-/****** Object:  StoredProcedure [dbo].[usp_report_flight]    Script Date: 16/11/2025 12:07:49 ******/
+/****** Object:  StoredProcedure [dbo].[usp_calc_flight]    Script Date: 16/11/2025 12:07:49 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -7,7 +7,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE OR ALTER PROCEDURE [dbo].[usp_report_flight]
+CREATE OR ALTER PROCEDURE [dbo].[usp_calc_flight]
   @client_id NVARCHAR(50)
 AS
 BEGIN
