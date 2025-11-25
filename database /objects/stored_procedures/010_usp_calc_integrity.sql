@@ -1,6 +1,6 @@
 
 
-/****** Object:  StoredProcedure [dbo].[usp_report_integrity]    Script Date: 16/11/2025 12:08:56 ******/
+/****** Object:  StoredProcedure [dbo].[usp_calc_integrity]    Script Date: 16/11/2025 12:08:56 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -8,7 +8,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE OR ALTER PROCEDURE [dbo].[usp_report_integrity]
+CREATE OR ALTER PROCEDURE [dbo].[usp_calc_integrity]
   @client_id NVARCHAR(50)
 AS
 BEGIN
