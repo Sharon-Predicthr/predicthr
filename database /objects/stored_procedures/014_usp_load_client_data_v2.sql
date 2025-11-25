@@ -341,9 +341,9 @@ BEGIN
   EXEC dbo.usp_calc_metrics            @client_id=@client_id;
   EXEC dbo.usp_update_adjusted_metrics @client_id=@client_id;
 
-  EXEC dbo.usp_report_flight           @client_id=@client_id;
-  EXEC dbo.usp_report_integrity        @client_id=@client_id;
-  EXEC dbo.usp_report_workload         @client_id=@client_id;
+  EXEC dbo.usp_calc_flight           @client_id=@client_id;
+  EXEC dbo.usp_calc_integrity        @client_id=@client_id;
+  EXEC dbo.usp_calc_burnout          @client_id=@client_id;
 
   ---------------------------------------------------------------------------
   -- 8) Summary
