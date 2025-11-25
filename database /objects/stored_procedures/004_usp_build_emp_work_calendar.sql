@@ -139,6 +139,7 @@ BEGIN
     ON p.emp_id=ewc.emp_id AND p.d=ewc.calendar_date
   WHERE ewc.client_id=@client_id;
 
+/*
   -----------------------------------------------------------------------
   -- 9) Weekday coverage per employee (use only dates NOT already presence)
   -----------------------------------------------------------------------
@@ -184,6 +185,7 @@ BEGIN
     AND f.is_working_weekday = 1;
 
   -- Done
+*/
 END
 GO
 
