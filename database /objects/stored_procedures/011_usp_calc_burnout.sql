@@ -1,13 +1,13 @@
 
 
-/****** Object:  StoredProcedure [dbo].[usp_report_workload]    Script Date: 16/11/2025 12:11:26 ******/
+/****** Object:  StoredProcedure [dbo].[usp_calc_burnout]    Script Date: 16/11/2025 12:11:26 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[usp_report_workload]
+CREATE OR ALTER PROCEDURE [dbo].[usp_calc_burnout]
   @client_id NVARCHAR(50)
 AS
 BEGIN
