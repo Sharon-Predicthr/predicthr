@@ -254,8 +254,8 @@ BEGIN
     max_off_run, short_gap_count_r, long_r, late_r,
     avg_min_b, avg_min_r, odd_pct_r, door_mis_pct_r, pingpong_pct_r,
     pres_b_norm_adj, pres_r_norm_adj,
-    max_off_run_adj, short_gap_count_r_adj,
-    legit_abs_days_b, legit_abs_days_r, legit_abs_conf_avg_r
+    max_off_run_adj, short_gap_count_r_adj 
+   -- legit_abs_days_b, legit_abs_days_r, legit_abs_conf_avg_r
   )
   SELECT
     @client_id,
@@ -275,7 +275,7 @@ BEGIN
     wi.odd_pct_r,
     wi.door_mis_pct_r,
     wi.pingpong_pct_r,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL -- , NULL, NULL, NULL
   FROM #calc c
   LEFT JOIN #emp_meta   m  ON m.emp_id=c.emp_id
   LEFT JOIN #work_integ wi ON wi.emp_id=c.emp_id
