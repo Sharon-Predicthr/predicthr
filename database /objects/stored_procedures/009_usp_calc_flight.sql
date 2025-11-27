@@ -76,12 +76,14 @@ BEGIN
   FROM dbo.emp_sessions
   WHERE client_id=@client_id;
 
+/*
   /* Legit absences (fully excluded) */
   IF OBJECT_ID('tempdb..#legit') IS NOT NULL DROP TABLE #legit;
   SELECT emp_id, calendar_date AS d
   INTO #legit
   FROM dbo.emp_day_legit
   WHERE client_id=@client_id AND confidence >= 0.6;
+*/
 
   /* Work calendar */
   IF OBJECT_ID('tempdb..#wd') IS NOT NULL DROP TABLE #wd;
@@ -104,12 +106,12 @@ BEGIN
     c.emp_id,
     (SELECT COUNT(*) FROM #pres p WHERE p.emp_id=c.emp_id AND p.d BETWEEN c.baseline_start AND c.baseline_end),
     (SELECT COUNT(*) FROM #wd   w WHERE w.is_workday=1 AND w.d BETWEEN c.baseline_start AND c.baseline_end),
-    (SELECT COUNT(*) FROM #wd   w WHERE w.is_workday=1 AND w.d BETWEEN c.baseline_start AND c.baseline_end
-       AND NOT EXISTS(SELECT 1 FROM #legit l WHERE l.emp_id=c.emp_id AND l.d=w.d)),
+    (SELECT COUNT(*) FROM #wd   w WHERE w.is_workday=1 AND w.d BETWEEN c.baseline_start AND c.baseline_end ),
+      -- AND NOT EXISTS(SELECT 1 FROM #legit l WHERE l.emp_id=c.emp_id AND l.d=w.d)),
     (SELECT COUNT(*) FROM #pres p WHERE p.emp_id=c.emp_id AND p.d BETWEEN c.recent_start AND c.recent_end),
     (SELECT COUNT(*) FROM #wd   w WHERE w.is_workday=1 AND w.d BETWEEN c.recent_start AND c.recent_end),
-    (SELECT COUNT(*) FROM #wd   w WHERE w.is_workday=1 AND w.d BETWEEN c.recent_start AND c.recent_end
-       AND NOT EXISTS(SELECT 1 FROM #legit l WHERE l.emp_id=c.emp_id AND l.d=w.d))
+    (SELECT COUNT(*) FROM #wd   w WHERE w.is_workday=1 AND w.d BETWEEN c.recent_start AND c.recent_end )
+      --  AND NOT EXISTS(SELECT 1 FROM #legit l WHERE l.emp_id=c.emp_id AND l.d=w.d))
   FROM #calc c;
 
   /* Scores to insert */
