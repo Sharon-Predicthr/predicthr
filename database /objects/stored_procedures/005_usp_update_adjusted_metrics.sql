@@ -78,6 +78,7 @@ BEGIN
 
   UPDATE #den SET denom_b = ISNULL(denom_b,0), denom_r = ISNULL(denom_r,0);
 
+/*
   ---------------------------------------------------------------------------
   -- 3) (Optional) subtract legit_absences from denominators when table exists
   --     NOTE: kept simple; if table does not exist, this step is skipped.
@@ -114,7 +115,7 @@ BEGIN
       GROUP BY la.emp_id
     ) z ON z.emp_id = d.emp_id;
   END
-
+*/
   ---------------------------------------------------------------------------
   -- 4) Update normalized presence in calculated_data
   ---------------------------------------------------------------------------
