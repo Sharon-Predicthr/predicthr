@@ -35,7 +35,7 @@ PRINT 'Applying base objects...';
 :r /db/objects/tables/005_emp_sessions_table.sql
 :r /db/objects/tables/006_emp_work_calendar_table.sql
 :r /db/objects/tables/007_interventions_table.sql
---:r /db/objects/tables/008_legit_abs_blocks_table.sql
+:r /db/objects/tables/008_absence_table.sql
 :r /db/objects/tables/009_report_flight_table.sql
 :r /db/objects/tables/010_report_integrity_table.sql
 :r /db/objects/tables/011_report_workload_table.sql
@@ -44,6 +44,8 @@ PRINT 'Applying base objects...';
 :r /db/objects/tables/014_work_calendar_dept_table.sql
 :r /db/objects/tables/015_work_calendar_table.sql
 :r /db/objects/tables/016_attendance_staging_table.sql
+:r /db/objects/tables/017_absence_type_table.sql
+:r /db/objects/tables/018_client_absence_type_table.sql
             
 --------------------------------------------------------
 -- 4. VIEWS
