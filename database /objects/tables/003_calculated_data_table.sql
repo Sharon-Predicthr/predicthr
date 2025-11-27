@@ -44,9 +44,10 @@ BEGIN
     pres_r_norm_adj       FLOAT  NULL,
     max_off_run_adj       INT    NULL,
     short_gap_count_r_adj INT    NULL,
-    legit_abs_days_b      INT    NULL,
-    legit_abs_days_r      INT    NULL,
-    legit_abs_conf_avg_r  FLOAT  NULL,  -- 0..1 average confidence on recent legit days
+  
+  --  legit_abs_days_b      INT    NULL,
+  --  legit_abs_days_r      INT    NULL,
+  --  legit_abs_conf_avg_r  FLOAT  NULL,  -- 0..1 average confidence on recent legit days
 
     CONSTRAINT PK_calculated_data PRIMARY KEY (client_id, emp_id)
   );
@@ -54,4 +55,5 @@ BEGIN
     ON dbo.calculated_data(client_id, emp_id);
 END
 GO
+
 
