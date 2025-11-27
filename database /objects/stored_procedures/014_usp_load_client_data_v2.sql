@@ -72,8 +72,8 @@ BEGIN
   DELETE FROM dbo.calculated_data    WHERE client_id=@client_id;
   DELETE FROM dbo.work_calendar_dept WHERE client_id=@client_id;
   DELETE FROM dbo.work_calendar      WHERE client_id=@client_id;
-  DELETE FROM dbo.legit_abs_blocks	 WHERE client_id=@client_id;
-  DELETE FROM dbo.emp_day_legit      WHERE client_id=@client_id;
+  -- DELETE FROM dbo.legit_abs_blocks	 WHERE client_id=@client_id;
+  -- DELETE FROM dbo.emp_day_legit      WHERE client_id=@client_id;
   DELETE FROM dbo.emp_sessions       WHERE client_id=@client_id;
   DELETE FROM dbo.attendance_rejects WHERE client_id=@client_id;
   DELETE FROM dbo.attendance         WHERE client_id=@client_id;
@@ -334,7 +334,7 @@ BEGIN
   EXEC dbo.usp_calc_sessions           @client_id=@client_id, @in_fallback_time=@in_fallback_time, @out_fallback_time=@out_fallback_time;
   EXEC dbo.usp_infer_work_calendar     @client_id=@client_id;
   EXEC dbo.usp_build_dept_calendar     @client_id=@client_id;
-  EXEC dbo.usp_detect_legit_absences   @client_id=@client_id;
+  -- EXEC dbo.usp_detect_legit_absences   @client_id=@client_id;
 
   EXEC dbo.usp_build_emp_work_calendar @client_id=@client_id;
 
