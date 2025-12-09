@@ -1,0 +1,6 @@
+{
+  "server": "localhost\\SQLEXPRESS",
+  "database": "PredictHR_DB_DEV",
+  "auth": "windows",
+  "migrations_folder": "./database/migrations"
+}

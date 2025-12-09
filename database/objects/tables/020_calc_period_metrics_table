@@ -1,0 +1,36 @@
+SET QUOTED_IDENTIFIER ON;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID('dbo.calc_period_metrics') AND type = 'U')
+BEGIN 
+CREATE TABLE dbo.calc_period_metrics
+(
+  client_id            NVARCHAR(50)    NOT NULL,
+  emp_id               NVARCHAR(100)   NOT NULL,
+
+  recent_start         DATETIME        NOT NULL,
+  recent_end           DATETIME        NOT NULL,
+
+  baseline_start       DATETIME        NOT NULL,
+  baseline_end         DATETIME        NOT NULL,
+
+  workdays_r           INT             NOT NULL,
+  workdays_b           INT             NOT NULL,
+
+  presence_r           INT             NOT NULL,
+  presence_b           INT             NOT NULL,
+
+  presence_pct_r       FLOAT           NOT NULL,
+  presence_pct_b       FLOAT           NOT NULL,
+
+  avg_minutes_r        FLOAT           NOT NULL,
+  avg_minutes_b        FLOAT           NOT NULL,
+
+  avg_arrival_r        DATETIME        NOT NULL,
+  avg_arrival_b        DATETIME        NOT NULL,
+
+  avg_departure_r      DATETIME        NOT NULL,
+  avg_departure_b      DATETIME        NOT NULL
+);
+END
+GO

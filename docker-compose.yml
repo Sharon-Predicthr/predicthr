@@ -1,0 +1,18 @@
+services:
+  predict_hr_sql:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: predict-hr-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      ENVIRONMENT: "${ENVIRONMENT}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./dev-data/import:/import
+      
+volumes:
+  mssql_data:
