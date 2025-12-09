@@ -39,7 +39,9 @@ GO
 	(NULL,N'pto_min_block_days','5'),
 	(NULL,N'sick_max_block_days','3'),
 --	(NULL,N'legit_conf_full_exclude_min','0.6'),
---	(NULL,N'legit_conf_partial_min','0.3'),
+--	(NULL,N'legit_conf_partial_min','0.3'),	
+	(NULL,N'baseline_months','9'),
+	(NULL,N'recent_months','3'),	
 	(NULL,N'baseline_min_days','15');
 
 
