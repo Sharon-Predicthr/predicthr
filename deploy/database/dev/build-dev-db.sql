@@ -46,6 +46,8 @@ PRINT 'Applying base objects...';
 :r /db/objects/tables/016_attendance_staging_table.sql
 :r /db/objects/tables/017_absence_type_table.sql
 :r /db/objects/tables/018_client_absence_type_table.sql
+:r /db/objects/tables/019_employees_table.sql
+:r /db/objects/tables/020_calc_period_metrics_table.sql
             
 --------------------------------------------------------
 -- 4. VIEWS
