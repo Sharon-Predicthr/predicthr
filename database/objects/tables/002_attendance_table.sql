@@ -13,7 +13,8 @@ CREATE TABLE dbo.attendance
   department  NVARCHAR(200) NOT NULL DEFAULT(N'Not Reported'),
   emp_role    NVARCHAR(200) NOT NULL DEFAULT(N'Not Reported'),
   badge_id    NVARCHAR(200) NULL,
-  door_id     NVARCHAR(200) NULL
+  door_id     NVARCHAR(200) NULL,
+  source_type SMALLINT      NOT NULL
 );
 
 CREATE INDEX IX_attendance_client_emp_date

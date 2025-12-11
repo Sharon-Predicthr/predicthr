@@ -9,9 +9,7 @@ CREATE TABLE dbo.absence
   emp_id               NVARCHAR(100)  NOT NULL,
   from_date            DATETIME       NOT NULL,
   to_date              DATETIME       NOT NULL,
-  client_absence_code  SMALLINT       NOT NULL, 
-  site_name            NVARCHAR(200)  NULL,
-  department           NVARCHAR(200)  NOT NULL DEFAULT(N'Not Reported')
+  client_absence_code  SMALLINT       NOT NULL
 );
 
 CREATE INDEX IX_absence_client_emp_date
