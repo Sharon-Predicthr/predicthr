@@ -92,7 +92,8 @@ BEGIN
     t6 NVARCHAR(2000) NULL,  -- department
     t7 NVARCHAR(2000) NULL,  -- emp_role
     t8 NVARCHAR(2000) NULL,  -- badge_id
-    t9 NVARCHAR(2000) NULL   -- door_id
+    t9 NVARCHAR(2000) NULL,   -- door_id
+    t10 NVARCHAR(2000) NULL   -- source_type
   );
 
   ---------------------------------------------------------------------------
@@ -123,9 +124,9 @@ BEGIN
       IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'dbo.attendance_staging') AND type = 'U')
           THROW 51002, 'attendance_staging table not found (hybrid mode requires it).', 1;
 
-      INSERT INTO #raw(t1,t2,t3,t4,t5,t6,t7,t8,t9)
+      INSERT INTO #raw(t1,t2,t3,t4,t5,t6,t7,t8,t9,t10)
       SELECT
-          s.t1,s.t2,s.t3,s.t4,s.t5,s.t6,s.t7,s.t8,s.t9
+          s.t1,s.t2,s.t3,s.t4,s.t5,s.t6,s.t7,s.t8,s.t9,s.t10
       FROM dbo.attendance_staging s
       WHERE s.batch_id = @batch_id
         AND s.client_id = @client_id
@@ -155,12 +156,13 @@ BEGIN
     department NVARCHAR(200) NULL,
     emp_role NVARCHAR(200) NULL,
     badge_id NVARCHAR(200) NULL,
-    door_id NVARCHAR(200) NULL
+    door_id NVARCHAR(200) NULL,
+    source_type SMALLINT NULL
   );
 
   INSERT INTO #parsed(client_id, emp_id, raw_event_date, raw_event_time,
                       parsed_event_date, parsed_event_time, site_name,
-                      department, emp_role, badge_id, door_id)
+                      department, emp_role, badge_id, door_id, source_type)
   SELECT
     LTRIM(RTRIM(ISNULL(t1,@client_id))) AS client_id,
     LTRIM(RTRIM(t2)) AS emp_id,
@@ -206,7 +208,8 @@ BEGIN
     NULLIF(LTRIM(RTRIM(t6)),N'') AS department,
     NULLIF(LTRIM(RTRIM(t7)),N'') AS emp_role,
     NULLIF(LTRIM(RTRIM(t8)),N'') AS badge_id,
-    NULLIF(LTRIM(RTRIM(t9)),N'') AS door_id
+    NULLIF(LTRIM(RTRIM(t9)),N'') AS door_id,
+    NULLIF(LTRIM(RTRIM(t10)),N'') AS source_type
   FROM #raw;
 
   ---------------------------------------------------------------------------
@@ -227,7 +230,8 @@ BEGIN
         ISNULL(p.department, N''),
         ISNULL(p.emp_role, N''),
         ISNULL(p.badge_id, N''),
-        ISNULL(p.door_id, N'')
+        ISNULL(p.door_id, N''),
+        ISNULL(p.source_type, N'')
       ) AS raw_line,
       N'Unparseable date'
     FROM #parsed p
@@ -246,7 +250,8 @@ BEGIN
         ISNULL(p.department, N''),
         ISNULL(p.emp_role, N''),
         ISNULL(p.badge_id, N''),
-        ISNULL(p.door_id, N'')
+        ISNULL(p.door_id, N''),
+        ISNULL(p.source_type, N'')
       ),
       N'Unparseable time'
     FROM #parsed p
@@ -269,7 +274,7 @@ BEGIN
   -- 5) Insert normalized rows into dbo.attendance
   ---------------------------------------------------------------------------
   INSERT INTO dbo.attendance
-    (client_id, emp_id, event_date, event_time, site_name, department, emp_role, badge_id, door_id)
+    (client_id, emp_id, event_date, event_time, site_name, department, emp_role, badge_id, door_id, source_type)
   SELECT
     @client_id,
     p.emp_id,
@@ -279,7 +284,8 @@ BEGIN
     ISNULL(p.department,  N''),
     ISNULL(p.emp_role,    N''),
     ISNULL(p.badge_id,    N''),
-    ISNULL(p.door_id,     N'')
+    ISNULL(p.door_id,     N''),
+    ISNULL(p.source_type, N'')
   FROM #parsed p;
 
   ---------------------------------------------------------------------------
@@ -338,7 +344,7 @@ BEGIN
 
   EXEC dbo.usp_build_emp_work_calendar @client_id=@client_id;
 
-  EXEC dbo.usp_calc_metrics            @client_id=@client_id;
+  EXEC dbo.usp_calc_periods            @client_id=@client_id;
   EXEC dbo.usp_update_adjusted_metrics @client_id=@client_id;
 
   EXEC dbo.usp_calc_flight           @client_id=@client_id;
