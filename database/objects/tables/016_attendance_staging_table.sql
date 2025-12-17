@@ -18,7 +18,7 @@ CREATE TABLE dbo.attendance_staging (
     t7 NVARCHAR(2000) NULL,
     t8 NVARCHAR(2000) NULL,
     t9 NVARCHAR(2000) NULL,
-    t10 NVARCHAR(2000) NULL
+    t10 NVARCHAR(2000) NULL,
     row_number BIGINT IDENTITY(1,1) NOT NULL,
     CONSTRAINT PK_attendance_staging PRIMARY KEY (batch_id, row_number)
 );
