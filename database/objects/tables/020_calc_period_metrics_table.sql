@@ -38,8 +38,8 @@ CREATE TABLE dbo.calc_period_metrics
   absence_pct_r        FLOAT           NOT NULL,
   absence_pct_b        FLOAT           NOT NULL, 
 
-  non_workday_precence_r INT           NOT NULL,
-  non_workday_precence_b INT           NOT NULL
+  non_workday_presence_r INT           NOT NULL,
+  non_workday_presence_b INT           NOT NULL
 );
 END
 GO
