@@ -30,7 +30,16 @@ CREATE TABLE dbo.calc_period_metrics
   avg_arrival_b        DATETIME        NOT NULL,
 
   avg_departure_r      DATETIME        NOT NULL,
-  avg_departure_b      DATETIME        NOT NULL
+  avg_departure_b      DATETIME        NOT NULL,
+
+  absence_r            INT             NOT NULL,
+  absence_b            INT             NOT NULL,
+
+  absence_pct_r        FLOAT           NOT NULL,
+  absence_pct_b        FLOAT           NOT NULL, 
+
+  non_workday_precence_r INT           NOT NULL,
+  non_workday_precence_b INT           NOT NULL
 );
 END
 GO
