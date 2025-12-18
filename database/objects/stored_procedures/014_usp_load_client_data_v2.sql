@@ -365,6 +365,7 @@ BEGIN
 
   EXEC dbo.usp_build_emp_work_calendar @client_id=@client_id;
 
+  EXEC dbo.usp_calc_metrics            @client_id=@client_id;
   EXEC dbo.usp_calc_periods            @client_id=@client_id;
   EXEC dbo.usp_update_adjusted_metrics @client_id=@client_id;
 
