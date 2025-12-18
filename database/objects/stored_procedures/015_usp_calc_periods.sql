@@ -548,12 +548,71 @@ BEGIN
     FROM #final_metrics;
     
     -- ========================================================================
+    -- STEP 15B: ALSO POPULATE calculated_data TABLE (for backward compatibility)
+    -- ========================================================================
+    
+    DELETE FROM dbo.calculated_data WHERE client_id=@client_id;
+    
+    INSERT INTO dbo.calculated_data
+    (
+      client_id, emp_id, department, emp_role, site_name,
+      baseline_start, baseline_end, baseline_days,
+      recent_start, recent_end, recent_days,
+      pres_b, pres_r, pres_b_norm, pres_r_norm,
+      max_off_run, short_gap_count_r,
+      long_r, late_r,
+      avg_min_b, avg_min_r,
+      odd_pct_r, door_mis_pct_r, pingpong_pct_r,
+      pres_b_norm_adj, pres_r_norm_adj,
+      max_off_run_adj, short_gap_count_r_adj
+    )
+    SELECT
+      cpm.client_id,
+      cpm.emp_id,
+      ISNULL(vd.department, N'Not Reported') AS department,
+      ISNULL(vr.emp_role, N'Not Reported') AS emp_role,
+      ISNULL(vs.site_name, N'') AS site_name,
+      CAST(cpm.baseline_start AS DATE) AS baseline_start,
+      CAST(cpm.baseline_end AS DATE) AS baseline_end,
+      cpm.workdays_b AS baseline_days,
+      CAST(cpm.recent_start AS DATE) AS recent_start,
+      CAST(cpm.recent_end AS DATE) AS recent_end,
+      cpm.workdays_r AS recent_days,
+      cpm.presence_b AS pres_b,
+      cpm.presence_r AS pres_r,
+      cpm.presence_pct_b AS pres_b_norm,
+      cpm.presence_pct_r AS pres_r_norm,
+      0 AS max_off_run,  -- Not calculated in period-based approach, set to 0
+      0 AS short_gap_count_r,  -- Not calculated in period-based approach, set to 0
+      0.0 AS long_r,  -- Not calculated in period-based approach, set to 0
+      0.0 AS late_r,  -- Not calculated in period-based approach, set to 0
+      cpm.avg_minutes_b AS avg_min_b,
+      cpm.avg_minutes_r AS avg_min_r,
+      0.0 AS odd_pct_r,  -- Not calculated in period-based approach, set to 0
+      0.0 AS door_mis_pct_r,  -- Not calculated in period-based approach, set to 0
+      0.0 AS pingpong_pct_r,  -- Not calculated in period-based approach, set to 0
+      NULL AS pres_b_norm_adj,  -- Will be updated by usp_update_adjusted_metrics
+      NULL AS pres_r_norm_adj,  -- Will be updated by usp_update_adjusted_metrics
+      NULL AS max_off_run_adj,  -- Will be updated by usp_update_adjusted_metrics
+      NULL AS short_gap_count_r_adj  -- Will be updated by usp_update_adjusted_metrics
+    FROM dbo.calc_period_metrics cpm
+    LEFT JOIN dbo.v_client_emp_department vd ON vd.client_id = cpm.client_id AND vd.emp_id = cpm.emp_id
+    LEFT JOIN dbo.v_client_emp_role vr ON vr.client_id = cpm.client_id AND vr.emp_id = cpm.emp_id
+    LEFT JOIN dbo.v_client_emp_site vs ON vs.client_id = cpm.client_id AND vs.emp_id = cpm.emp_id
+    WHERE cpm.client_id = @client_id;
+    
+    -- ========================================================================
     -- STEP 16: VALIDATE RESULTS AND COMMIT
     -- ========================================================================
     
-    IF @@ROWCOUNT = 0
+    IF NOT EXISTS (SELECT 1 FROM dbo.calc_period_metrics WHERE client_id = @client_id)
     BEGIN
       RAISERROR('usp_calc_periods: No rows inserted into calc_period_metrics for client_id=%s. Check employee filter criteria.', 10, 1, @client_id);
+    END
+    
+    IF NOT EXISTS (SELECT 1 FROM dbo.calculated_data WHERE client_id = @client_id)
+    BEGIN
+      RAISERROR('usp_calc_periods: No rows inserted into calculated_data for client_id=%s.', 10, 1, @client_id);
     END
     
     -- Commit transaction if we started it
