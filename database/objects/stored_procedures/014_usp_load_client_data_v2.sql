@@ -109,8 +109,8 @@ BEGIN
                FIELDTERMINATOR = '','',
                ROWTERMINATOR  = ''0x0A'',   -- LF, מתאים גם ל־Linux וגם ל־Windows (CRLF גם מזוהה)
                KEEPNULLS,
-               TABLOCK' +
-               CASE WHEN @has_header = 1 THEN N', FIRSTROW = 2' ELSE N'' END + N'
+               MAXERRORS = 0,
+               FIRSTROW = ' + CAST(CASE WHEN @has_header = 1 THEN 2 ELSE 1 END AS NVARCHAR(10)) + N'
              );';
 
       EXEC sys.sp_executesql @sql;
