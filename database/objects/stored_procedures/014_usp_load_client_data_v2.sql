@@ -101,8 +101,22 @@ BEGIN
   ---------------------------------------------------------------------------
   IF @attendance_csv_path IS NOT NULL
   BEGIN
+      -- Create temporary table with 9 columns for BULK INSERT (CSV has 9 columns)
+      IF OBJECT_ID('tempdb..#bulk_temp') IS NOT NULL DROP TABLE #bulk_temp;
+      CREATE TABLE #bulk_temp(
+        t1 NVARCHAR(2000) NULL,
+        t2 NVARCHAR(2000) NULL,
+        t3 NVARCHAR(2000) NULL,
+        t4 NVARCHAR(2000) NULL,
+        t5 NVARCHAR(2000) NULL,
+        t6 NVARCHAR(2000) NULL,
+        t7 NVARCHAR(2000) NULL,
+        t8 NVARCHAR(2000) NULL,
+        t9 NVARCHAR(2000) NULL
+      );
+
       DECLARE @sql NVARCHAR(MAX) =
-           N'BULK INSERT #raw
+           N'BULK INSERT #bulk_temp
              FROM ' + QUOTENAME(@attendance_csv_path,'''') + N'
              WITH (
                DATAFILETYPE = ''char'',
@@ -114,6 +128,13 @@ BEGIN
              );';
 
       EXEC sys.sp_executesql @sql;
+
+      -- Copy from temp table to #raw, setting t10 to NULL
+      INSERT INTO #raw(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10)
+      SELECT t1, t2, t3, t4, t5, t6, t7, t8, t9, NULL
+      FROM #bulk_temp;
+
+      DROP TABLE #bulk_temp;
   END
 
   ---------------------------------------------------------------------------
