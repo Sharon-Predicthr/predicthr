@@ -74,6 +74,7 @@ PRINT 'Applying base objects...';
 :r /db/objects/stored_procedures/013_usp_load_client_data.sql
 :r /db/objects/stored_procedures/014_usp_load_client_data_v2.sql
 :r /db/objects/stored_procedures/015_usp_calc_periods.sql
+:r /db/objects/stored_procedures/016_usp_calc_flight_risk.sql
 
 PRINT '=== Base DB created — migrations will run from shell ===';
 GO
