@@ -1,5 +1,5 @@
 
-/****** Object:  StoredProcedure [dbo].[usp_calc_periods]    Script Date: 12/11/2025 ******/
+/****** Object:  StoredProcedure [dbo].[usp_calc_periods]    Script Date: 22/12/2025 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -14,12 +14,14 @@ BEGIN
   ================================================================================
   Procedure: usp_calc_periods
   Purpose:   Calculate period-based metrics for employees comparing baseline 
-             vs recent periods for anomaly detection in Flight, Burnout, and Fraud analysis.
+             vs recent periods. Uses emp_work_calendar for presence calculations
+             and per-employee workday calculations based on their individual
+             period boundaries.
   
   Parameters:
     @client_id - Client identifier (required)
   
-  Returns:   None (inserts into calc_period_metrics table)
+  Returns:   None (inserts into calc_period_metrics and calculated_data tables)
   
   Multi-tenant: Yes - all operations filtered by @client_id
   Transaction:  Yes - wrapped in explicit transaction with error handling
@@ -27,7 +29,7 @@ BEGIN
   */
   
   SET NOCOUNT ON;
-  SET XACT_ABORT ON;  -- Auto-rollback on error for transaction safety
+  SET XACT_ABORT ON;
   
   DECLARE @ErrorMessage NVARCHAR(4000);
   DECLARE @ErrorSeverity INT;
@@ -45,7 +47,6 @@ BEGIN
       RETURN;
     END
     
-    -- Check if client has any data
     IF NOT EXISTS (SELECT 1 FROM dbo.work_calendar WHERE client_id = @client_id)
     BEGIN
       RAISERROR('usp_calc_periods: No work_calendar data found for client_id=%s.', 16, 1, @client_id);
@@ -53,16 +54,15 @@ BEGIN
     END
     
     -- ========================================================================
-    -- STEP 2: BEGIN TRANSACTION (Multi-tenant safe - filtered by @client_id)
+    -- STEP 2: BEGIN TRANSACTION
     -- ========================================================================
     
     IF @TransactionCount = 0
       BEGIN TRANSACTION;
     
     -- ========================================================================
-    -- STEP 3: LOAD CONFIGURATION PARAMETERS
+    -- STEP 3: LOAD CONFIGURATION PARAMETERS (from risk_config)
     -- ========================================================================
-    -- Get baseline_months and recent_months from risk_config with client-specific or global defaults
     
     DECLARE 
       @baseline_months INT,
@@ -76,7 +76,7 @@ BEGIN
       AND config_key = N'baseline_months'
     ORDER BY CASE WHEN client_id = @client_id THEN 0 ELSE 1 END;
     
-    IF @baseline_months IS NULL SET @baseline_months = 9;  -- Default value
+    IF @baseline_months IS NULL SET @baseline_months = 9;
     
     -- Get recent_months (client-specific -> global -> default 3)
     SELECT TOP(1) @recent_months = TRY_CAST(config_value AS INT)
@@ -85,35 +85,10 @@ BEGIN
       AND config_key = N'recent_months'
     ORDER BY CASE WHEN client_id = @client_id THEN 0 ELSE 1 END;
     
-    IF @recent_months IS NULL SET @recent_months = 3;  -- Default value
+    IF @recent_months IS NULL SET @recent_months = 3;
     
     -- ========================================================================
-    -- STEP 4: CALCULATE last_company_workday
-    -- ========================================================================
-    -- The last day of data we have from the client (max workday from work_calendar)
-    
-    SELECT TOP(1) @last_company_workday = MAX(calendar_date)
-    FROM dbo.work_calendar
-    WHERE client_id = @client_id 
-      AND is_workday = 1;
-    
-    IF @last_company_workday IS NULL
-    BEGIN
-      RAISERROR('usp_calc_periods: No workdays found in work_calendar for client_id=%s.', 16, 1, @client_id);
-      IF @TransactionCount = 0 ROLLBACK TRANSACTION;
-      RETURN;
-    END
-    
-    -- ========================================================================
-    -- STEP 5: DELETE EXISTING DATA FOR THIS CLIENT (Fresh calculation)
-    -- ========================================================================
-    -- Multi-tenant safe: only delete records for this specific client
-    
-    DELETE FROM dbo.calc_period_metrics
-    WHERE client_id = @client_id;
-    
-    -- ========================================================================
-    -- STEP 6: BUILD BASE EMPLOYEE UNIVERSE (calc_periods_emp)
+    -- STEP 4: BUILD BASE EMPLOYEE UNIVERSE (calc_periods_emp)
     -- ========================================================================
     -- Filter: Only employees who have worked at least 6 months AND worked in past 2 months
     -- This is the foundation table that all other calculations will join to
@@ -176,7 +151,7 @@ BEGIN
     END
     
     -- ========================================================================
-    -- STEP 7: CALCULATE PERIOD BOUNDARIES (recent_start, recent_end, baseline_start, baseline_end)
+    -- STEP 5: CALCULATE PERIOD BOUNDARIES (recent_start, recent_end, baseline_start, baseline_end)
     -- ========================================================================
     -- Each employee gets their own periods based on their work_start date
     
@@ -217,22 +192,29 @@ BEGIN
     FROM #calc_periods_emp;
     
     -- ========================================================================
-    -- STEP 8: CALCULATE WORKDAYS (workdays_r, workdays_b)
+    -- STEP 6: DELETE EXISTING DATA FOR THIS CLIENT
     -- ========================================================================
-    -- Count of company workdays in each period
+    
+    DELETE FROM dbo.calc_period_metrics
+    WHERE client_id = @client_id;
+    
+    -- ========================================================================
+    -- STEP 7: CALCULATE WORKDAYS (PER EMPLOYEE based on their period boundaries)
+    -- ========================================================================
+    -- Each employee gets workdays calculated for THEIR specific recent/baseline dates
     
     IF OBJECT_ID('tempdb..#workdays') IS NOT NULL DROP TABLE #workdays;
     
     SELECT 
       ep.client_id,
       ep.emp_id,
-      -- Workdays in recent period
+      -- Workdays in recent period (for this employee's specific dates)
       SUM(CASE 
         WHEN wc.calendar_date BETWEEN ep.recent_start AND ep.recent_end 
         THEN wc.is_workday 
         ELSE 0 
       END) AS workdays_r,
-      -- Workdays in baseline period
+      -- Workdays in baseline period (for this employee's specific dates)
       SUM(CASE 
         WHEN wc.calendar_date BETWEEN ep.baseline_start AND ep.baseline_end 
         THEN wc.is_workday 
@@ -246,175 +228,44 @@ BEGIN
     GROUP BY ep.client_id, ep.emp_id;
     
     -- ========================================================================
-    -- STEP 9: CALCULATE PRESENCE (presence_r, presence_b)
+    -- STEP 8: CALCULATE PRESENCE (using emp_work_calendar.is_working)
     -- ========================================================================
-    -- Count of days employee was present (had work sessions) in each period
-    -- Uses emp_sessions to count distinct dates with sessions
+    -- Use emp_work_calendar.is_working (SUM) instead of counting distinct dates from emp_sessions
     
     IF OBJECT_ID('tempdb..#presence') IS NOT NULL DROP TABLE #presence;
     
     SELECT 
       ep.client_id,
       ep.emp_id,
-      -- Presence count in recent period (count distinct dates with sessions)
-      COUNT(DISTINCT CASE 
-        WHEN CAST(es.session_start AS DATE) BETWEEN ep.recent_start AND ep.recent_end
-        THEN CAST(es.session_start AS DATE)
-        ELSE NULL
+      -- Presence in recent period (sum of is_working where is_workday = 1)
+      SUM(CASE 
+        WHEN ewc.calendar_date BETWEEN ep.recent_start AND ep.recent_end 
+          AND wc.is_workday = 1 
+        THEN COALESCE(ewc.is_working, 0) 
+        ELSE 0 
       END) AS presence_r,
-      -- Presence count in baseline period (count distinct dates with sessions)
-      COUNT(DISTINCT CASE 
-        WHEN CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end
-        THEN CAST(es.session_start AS DATE)
-        ELSE NULL
-      END) AS presence_b
-    INTO #presence
-    FROM #emp_periods ep
-    LEFT JOIN dbo.emp_sessions es
-      ON es.client_id = ep.client_id
-      AND es.emp_id = ep.emp_id
-      AND CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.recent_end
-    GROUP BY ep.client_id, ep.emp_id;
-    
-    -- ========================================================================
-    -- STEP 10: CALCULATE AVERAGE MINUTES (avg_minutes_r, avg_minutes_b)
-    -- ========================================================================
-    -- Average minutes worked per day in each period
-    
-    IF OBJECT_ID('tempdb..#avg_minutes') IS NOT NULL DROP TABLE #avg_minutes;
-    
-    SELECT 
-      ep.client_id,
-      ep.emp_id,
-      -- Average minutes in recent period
-      AVG(CASE 
-        WHEN CAST(es.session_start AS DATE) BETWEEN ep.recent_start AND ep.recent_end
-        THEN CAST(es.minutes_worked AS FLOAT)
-        ELSE NULL
-      END) AS avg_minutes_r,
-      -- Average minutes in baseline period
-      AVG(CASE 
-        WHEN CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end
-        THEN CAST(es.minutes_worked AS FLOAT)
-        ELSE NULL
-      END) AS avg_minutes_b
-    INTO #avg_minutes
-    FROM #emp_periods ep
-    LEFT JOIN dbo.emp_sessions es
-      ON es.client_id = ep.client_id
-      AND es.emp_id = ep.emp_id
-      AND CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.recent_end
-    GROUP BY ep.client_id, ep.emp_id;
-    
-    -- ========================================================================
-    -- STEP 11: CALCULATE AVERAGE ARRIVAL TIME (avg_arrival_r, avg_arrival_b)
-    -- ========================================================================
-    -- Average time of arrival (session_start time) in each period
-    
-    IF OBJECT_ID('tempdb..#avg_arrival') IS NOT NULL DROP TABLE #avg_arrival;
-    
-    SELECT 
-      ep.client_id,
-      ep.emp_id,
-      -- Average arrival time in recent period
-      CAST(
-        DATEADD(
-          SECOND, 
-          AVG(CASE 
-            WHEN CAST(es.session_start AS DATE) BETWEEN ep.recent_start AND ep.recent_end
-            THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_start AS TIME))
-            ELSE NULL
-          END),
-          '00:00:00'
-        ) AS TIME
-      ) AS avg_arrival_r,
-      -- Average arrival time in baseline period
-      CAST(
-        DATEADD(
-          SECOND, 
-          AVG(CASE 
-            WHEN CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end
-            THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_start AS TIME))
-            ELSE NULL
-          END),
-          '00:00:00'
-        ) AS TIME
-      ) AS avg_arrival_b
-    INTO #avg_arrival
-    FROM #emp_periods ep
-    LEFT JOIN dbo.emp_sessions es
-      ON es.client_id = ep.client_id
-      AND es.emp_id = ep.emp_id
-      AND CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.recent_end
-    GROUP BY ep.client_id, ep.emp_id;
-    
-    -- ========================================================================
-    -- STEP 12: CALCULATE AVERAGE DEPARTURE TIME (avg_departure_r, avg_departure_b)
-    -- ========================================================================
-    -- Average time of departure (session_end time) in each period
-    
-    IF OBJECT_ID('tempdb..#avg_departure') IS NOT NULL DROP TABLE #avg_departure;
-    
-    SELECT 
-      ep.client_id,
-      ep.emp_id,
-      -- Average departure time in recent period
-      CAST(
-        DATEADD(
-          SECOND, 
-          AVG(CASE 
-            WHEN CAST(es.session_end AS DATE) BETWEEN ep.recent_start AND ep.recent_end
-            THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_end AS TIME))
-            ELSE NULL
-          END),
-          '00:00:00'
-        ) AS TIME
-      ) AS avg_departure_r,
-      -- Average departure time in baseline period
-      CAST(
-        DATEADD(
-          SECOND, 
-          AVG(CASE 
-            WHEN CAST(es.session_end AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end
-            THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_end AS TIME))
-            ELSE NULL
-          END),
-          '00:00:00'
-        ) AS TIME
-      ) AS avg_departure_b
-    INTO #avg_departure
-    FROM #emp_periods ep
-    LEFT JOIN dbo.emp_sessions es
-      ON es.client_id = ep.client_id
-      AND es.emp_id = ep.emp_id
-      AND CAST(es.session_end AS DATE) BETWEEN ep.baseline_start AND ep.recent_end
-    GROUP BY ep.client_id, ep.emp_id;
-    
-    -- ========================================================================
-    -- STEP 13: CALCULATE NON-WORKDAY PRESENCE (non_workday_presence_r, non_workday_presence_b)
-    -- ========================================================================
-    -- Count of non-workdays where employee was present (working)
-    
-    IF OBJECT_ID('tempdb..#non_workday_presence') IS NOT NULL DROP TABLE #non_workday_presence;
-    
-    SELECT 
-      ep.client_id,
-      ep.emp_id,
-      -- Non-workday presence in recent period (note: PRD says is_workday = 0)
+      -- Presence in baseline period
       SUM(CASE 
-        WHEN ewc.calendar_date BETWEEN ep.recent_start AND ep.recent_end
-          AND wc.is_workday = 0
-        THEN COALESCE(ewc.is_working, 0)
-        ELSE 0
+        WHEN ewc.calendar_date BETWEEN ep.baseline_start AND ep.baseline_end 
+          AND wc.is_workday = 1 
+        THEN COALESCE(ewc.is_working, 0) 
+        ELSE 0 
+      END) AS presence_b,
+      -- Non-workday presence in recent period
+      SUM(CASE 
+        WHEN ewc.calendar_date BETWEEN ep.recent_start AND ep.recent_end 
+          AND wc.is_workday = 0 
+        THEN COALESCE(ewc.is_working, 0) 
+        ELSE 0 
       END) AS non_workday_presence_r,
-      -- Non-workday presence in baseline period (note: PRD typo says is_workday = 1, but should be 0)
+      -- Non-workday presence in baseline period
       SUM(CASE 
-        WHEN ewc.calendar_date BETWEEN ep.baseline_start AND ep.baseline_end
-          AND wc.is_workday = 0
-        THEN COALESCE(ewc.is_working, 0)
-        ELSE 0
+        WHEN ewc.calendar_date BETWEEN ep.baseline_start AND ep.baseline_end 
+          AND wc.is_workday = 0 
+        THEN COALESCE(ewc.is_working, 0) 
+        ELSE 0 
       END) AS non_workday_presence_b
-    INTO #non_workday_presence
+    INTO #presence
     FROM #emp_periods ep
     LEFT JOIN dbo.emp_work_calendar ewc
       ON ewc.client_id = ep.client_id
@@ -426,9 +277,74 @@ BEGIN
     GROUP BY ep.client_id, ep.emp_id;
     
     -- ========================================================================
-    -- STEP 14: ASSEMBLE FINAL RESULTS AND CALCULATE DERIVED METRICS
+    -- STEP 9: CALCULATE TIME METRICS (avg_minutes, avg_arrival, avg_departure)
     -- ========================================================================
-    -- Combine all calculated metrics and compute percentages
+    
+    IF OBJECT_ID('tempdb..#time_metrics') IS NOT NULL DROP TABLE #time_metrics;
+    
+    SELECT 
+      ep.client_id,
+      ep.emp_id,
+      -- Average minutes worked
+      AVG(CASE 
+        WHEN CAST(es.session_start AS DATE) BETWEEN ep.recent_start AND ep.recent_end 
+        THEN CAST(es.minutes_worked AS FLOAT)
+        ELSE NULL 
+      END) AS avg_minutes_r,
+      AVG(CASE 
+        WHEN CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end 
+        THEN CAST(es.minutes_worked AS FLOAT)
+        ELSE NULL 
+      END) AS avg_minutes_b,
+      -- Average arrival time (session_start time)
+      CAST(DATEADD(
+        SECOND,
+        AVG(CASE 
+          WHEN CAST(es.session_start AS DATE) BETWEEN ep.recent_start AND ep.recent_end 
+          THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_start AS TIME))
+          ELSE NULL
+        END),
+        '00:00:00'
+      ) AS TIME) AS avg_arrival_r,
+      CAST(DATEADD(
+        SECOND,
+        AVG(CASE 
+          WHEN CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end 
+          THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_start AS TIME))
+          ELSE NULL
+        END),
+        '00:00:00'
+      ) AS TIME) AS avg_arrival_b,
+      -- Average departure time (session_end time)
+      CAST(DATEADD(
+        SECOND,
+        AVG(CASE 
+          WHEN CAST(es.session_end AS DATE) BETWEEN ep.recent_start AND ep.recent_end 
+          THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_end AS TIME))
+          ELSE NULL
+        END),
+        '00:00:00'
+      ) AS TIME) AS avg_departure_r,
+      CAST(DATEADD(
+        SECOND,
+        AVG(CASE 
+          WHEN CAST(es.session_end AS DATE) BETWEEN ep.baseline_start AND ep.baseline_end 
+          THEN DATEDIFF(SECOND, '00:00:00', CAST(es.session_end AS TIME))
+          ELSE NULL
+        END),
+        '00:00:00'
+      ) AS TIME) AS avg_departure_b
+    INTO #time_metrics
+    FROM #emp_periods ep
+    LEFT JOIN dbo.emp_sessions es
+      ON es.client_id = ep.client_id
+      AND es.emp_id = ep.emp_id
+      AND CAST(es.session_start AS DATE) BETWEEN ep.baseline_start AND ep.recent_end
+    GROUP BY ep.client_id, ep.emp_id;
+    
+    -- ========================================================================
+    -- STEP 10: ASSEMBLE FINAL RESULTS WITH ALL CALCULATIONS
+    -- ========================================================================
     
     IF OBJECT_ID('tempdb..#final_metrics') IS NOT NULL DROP TABLE #final_metrics;
     
@@ -436,21 +352,21 @@ BEGIN
       ep.client_id,
       ep.emp_id,
       
-      -- Period boundaries
+      -- Period boundaries (as DATETIME for table compatibility)
       CAST(ep.recent_start AS DATETIME) AS recent_start,
       CAST(ep.recent_end AS DATETIME) AS recent_end,
       CAST(ep.baseline_start AS DATETIME) AS baseline_start,
       CAST(ep.baseline_end AS DATETIME) AS baseline_end,
       
-      -- Workdays
+      -- Workdays (per employee - based on their specific period boundaries)
       ISNULL(wd.workdays_r, 0) AS workdays_r,
       ISNULL(wd.workdays_b, 0) AS workdays_b,
       
-      -- Presence
+      -- Presence counts
       ISNULL(p.presence_r, 0) AS presence_r,
       ISNULL(p.presence_b, 0) AS presence_b,
       
-      -- Presence percentages (format as 0.XX)
+      -- Presence percentages (as FLOAT, not formatted string)
       CASE 
         WHEN ISNULL(wd.workdays_r, 0) > 0 
         THEN CAST(ISNULL(p.presence_r, 0) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)
@@ -462,37 +378,33 @@ BEGIN
         ELSE 0.0
       END AS presence_pct_b,
       
-      -- Average minutes (handle NULLs)
-      ISNULL(am.avg_minutes_r, 0.0) AS avg_minutes_r,
-      ISNULL(am.avg_minutes_b, 0.0) AS avg_minutes_b,
+      -- Non-workday presence
+      ISNULL(p.non_workday_presence_r, 0) AS non_workday_presence_r,
+      ISNULL(p.non_workday_presence_b, 0) AS non_workday_presence_b,
       
-      -- Average arrival times (handle NULLs with default '00:00:00')
-      ISNULL(aa.avg_arrival_r, CAST('00:00:00' AS TIME)) AS avg_arrival_r,
-      ISNULL(aa.avg_arrival_b, CAST('00:00:00' AS TIME)) AS avg_arrival_b,
-      
-      -- Average departure times (handle NULLs with default '00:00:00')
-      ISNULL(ad.avg_departure_r, CAST('00:00:00' AS TIME)) AS avg_departure_r,
-      ISNULL(ad.avg_departure_b, CAST('00:00:00' AS TIME)) AS avg_departure_b,
+      -- Time metrics
+      ISNULL(tm.avg_minutes_r, 0.0) AS avg_minutes_r,
+      ISNULL(tm.avg_minutes_b, 0.0) AS avg_minutes_b,
+      ISNULL(tm.avg_arrival_r, CAST('00:00:00' AS TIME)) AS avg_arrival_r,
+      ISNULL(tm.avg_arrival_b, CAST('00:00:00' AS TIME)) AS avg_arrival_b,
+      ISNULL(tm.avg_departure_r, CAST('00:00:00' AS TIME)) AS avg_departure_r,
+      ISNULL(tm.avg_departure_b, CAST('00:00:00' AS TIME)) AS avg_departure_b,
       
       -- Absence (workdays - presence)
       ISNULL(wd.workdays_r, 0) - ISNULL(p.presence_r, 0) AS absence_r,
       ISNULL(wd.workdays_b, 0) - ISNULL(p.presence_b, 0) AS absence_b,
       
-      -- Absence percentages (format as 0.XX)
+      -- Absence percentages
       CASE 
         WHEN ISNULL(wd.workdays_r, 0) > 0 
-        THEN CAST(ISNULL(wd.workdays_r, 0) - ISNULL(p.presence_r, 0) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)
+        THEN CAST((ISNULL(wd.workdays_r, 0) - ISNULL(p.presence_r, 0)) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)
         ELSE 0.0
       END AS absence_pct_r,
       CASE 
         WHEN ISNULL(wd.workdays_b, 0) > 0 
-        THEN CAST(ISNULL(wd.workdays_b, 0) - ISNULL(p.presence_b, 0) AS FLOAT) / CAST(wd.workdays_b AS FLOAT)
+        THEN CAST((ISNULL(wd.workdays_b, 0) - ISNULL(p.presence_b, 0)) AS FLOAT) / CAST(wd.workdays_b AS FLOAT)
         ELSE 0.0
-      END AS absence_pct_b,
-      
-      -- Non-workday presence
-      ISNULL(nwp.non_workday_presence_r, 0) AS non_workday_presence_r,
-      ISNULL(nwp.non_workday_presence_b, 0) AS non_workday_presence_b
+      END AS absence_pct_b
       
     INTO #final_metrics
     FROM #emp_periods ep
@@ -502,21 +414,12 @@ BEGIN
     LEFT JOIN #presence p
       ON p.client_id = ep.client_id
       AND p.emp_id = ep.emp_id
-    LEFT JOIN #avg_minutes am
-      ON am.client_id = ep.client_id
-      AND am.emp_id = ep.emp_id
-    LEFT JOIN #avg_arrival aa
-      ON aa.client_id = ep.client_id
-      AND aa.emp_id = ep.emp_id
-    LEFT JOIN #avg_departure ad
-      ON ad.client_id = ep.client_id
-      AND ad.emp_id = ep.emp_id
-    LEFT JOIN #non_workday_presence nwp
-      ON nwp.client_id = ep.client_id
-      AND nwp.emp_id = ep.emp_id;
+    LEFT JOIN #time_metrics tm
+      ON tm.client_id = ep.client_id
+      AND tm.emp_id = ep.emp_id;
     
     -- ========================================================================
-    -- STEP 15: INSERT INTO calc_period_metrics TABLE
+    -- STEP 11: INSERT INTO calc_period_metrics TABLE
     -- ========================================================================
     
     INSERT INTO dbo.calc_period_metrics
@@ -548,7 +451,7 @@ BEGIN
     FROM #final_metrics;
     
     -- ========================================================================
-    -- STEP 15B: ALSO POPULATE calculated_data TABLE (for backward compatibility)
+    -- STEP 12: ALSO POPULATE calculated_data TABLE (for backward compatibility)
     -- ========================================================================
     
     DELETE FROM dbo.calculated_data WHERE client_id=@client_id;
@@ -602,7 +505,7 @@ BEGIN
     WHERE cpm.client_id = @client_id;
     
     -- ========================================================================
-    -- STEP 16: VALIDATE RESULTS AND COMMIT
+    -- STEP 13: VALIDATE RESULTS AND COMMIT
     -- ========================================================================
     
     IF NOT EXISTS (SELECT 1 FROM dbo.calc_period_metrics WHERE client_id = @client_id)
@@ -615,27 +518,19 @@ BEGIN
       RAISERROR('usp_calc_periods: No rows inserted into calculated_data for client_id=%s.', 10, 1, @client_id);
     END
     
-    -- Commit transaction if we started it
     IF @TransactionCount = 0
       COMMIT TRANSACTION;
     
   END TRY
   BEGIN CATCH
-    -- ========================================================================
-    -- ERROR HANDLING
-    -- ========================================================================
-    
-    -- Capture error details
     SELECT 
       @ErrorMessage = ERROR_MESSAGE(),
       @ErrorSeverity = ERROR_SEVERITY(),
       @ErrorState = ERROR_STATE();
     
-    -- Rollback transaction if we started it
     IF @TransactionCount = 0 AND @@TRANCOUNT > 0
       ROLLBACK TRANSACTION;
     
-    -- Raise error with context
     RAISERROR(
       'usp_calc_periods: Error processing client_id=%s. Error: %s', 
       @ErrorSeverity, 
@@ -644,10 +539,8 @@ BEGIN
       @ErrorMessage
     );
     
-    -- Return error code
     RETURN -1;
   END CATCH
   
 END
 GO
-

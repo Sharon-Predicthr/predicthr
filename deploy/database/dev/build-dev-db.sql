@@ -48,6 +48,7 @@ PRINT 'Applying base objects...';
 :r /db/objects/tables/018_client_absence_type_table.sql
 :r /db/objects/tables/019_employees_table.sql
 :r /db/objects/tables/020_calc_period_metrics_table.sql
+:r /db/objects/tables/021_calc_fraud_metrics_table.sql
             
 --------------------------------------------------------
 -- 4. VIEWS
@@ -76,6 +77,7 @@ PRINT 'Applying base objects...';
 :r /db/objects/stored_procedures/015_usp_calc_periods.sql
 :r /db/objects/stored_procedures/016_usp_calc_flight_risk.sql
 :r /db/objects/stored_procedures/017_usp_calc_burnout_risk_score.sql
+:r /db/objects/stored_procedures/018_usp_calc_fraud_risk_score.sql
 
 PRINT '=== Base DB created — migrations will run from shell ===';
 GO
