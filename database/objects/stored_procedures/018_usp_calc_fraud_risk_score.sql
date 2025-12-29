@@ -21,7 +21,7 @@ BEGIN
   Parameters:
     @client_id - Client identifier (required)
   
-  Returns:   None (inserts into calc_fraud_metrics and report_integrity tables)
+  Returns:   None (inserts into calc_fraud_metrics and report_fraud tables)
   
   Multi-tenant: Yes - all operations filtered by @client_id
   Transaction:  Yes - wrapped with error handling
@@ -453,12 +453,12 @@ BEGIN
   FROM #fraud_scores fs;
   
   -- ========================================================================
-  -- STEP 6: INSERT INTO report_integrity TABLE
+  -- STEP 6: INSERT INTO report_fraud TABLE
   -- ========================================================================
   
-  DELETE FROM dbo.report_integrity WHERE client_id = @client_id;
+  DELETE FROM dbo.report_fraud WHERE client_id = @client_id;
   
-  INSERT INTO dbo.report_integrity
+  INSERT INTO dbo.report_fraud
   (
     client_id, emp_id, department, emp_role, site_name,
     risk_score, risk_type, score_explanation, computed_at
@@ -491,7 +491,7 @@ BEGIN
   
   IF @@ROWCOUNT = 0
   BEGIN
-    RAISERROR('usp_calc_fraud_risk_score: No rows inserted into report_integrity for client_id=%s. Check minimum data requirements.', 10, 1, @client_id);
+    RAISERROR('usp_calc_fraud_risk_score: No rows inserted into report_fraud for client_id=%s. Check minimum data requirements.', 10, 1, @client_id);
   END
   
 END

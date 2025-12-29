@@ -52,8 +52,8 @@ BEGIN
   -- 0) Safety: clear any prior rows for @client_id so this is idempotent
   ---------------------------------------------------------------------------
   DELETE FROM dbo.report_flight      WHERE client_id=@client_id;
-  DELETE FROM dbo.report_integrity   WHERE client_id=@client_id;
-  DELETE FROM dbo.report_workload    WHERE client_id=@client_id;
+  DELETE FROM dbo.report_fraud       WHERE client_id=@client_id;
+  DELETE FROM dbo.report_burnout     WHERE client_id=@client_id;
   DELETE FROM dbo.calculated_data    WHERE client_id=@client_id;
   DELETE FROM dbo.work_calendar_dept WHERE client_id=@client_id;
   DELETE FROM dbo.work_calendar      WHERE client_id=@client_id;

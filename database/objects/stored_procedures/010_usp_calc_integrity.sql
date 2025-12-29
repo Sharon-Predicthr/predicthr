@@ -23,7 +23,7 @@ BEGIN
   END
 
   /* Fresh start */
-  DELETE FROM dbo.report_integrity WHERE client_id=@client_id;
+  DELETE FROM dbo.report_fraud WHERE client_id=@client_id;
 
   /* Weights & threshold (with defaults) */
   DECLARE
@@ -163,7 +163,7 @@ BEGIN
     ON i.intervention_id = r.intervention_id;
 
   /* Persist */
-  INSERT INTO dbo.report_integrity
+  INSERT INTO dbo.report_fraud
   (
     client_id, emp_id, department, emp_role, site_name,
     risk_score, risk_type,

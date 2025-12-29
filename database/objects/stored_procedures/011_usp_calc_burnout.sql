@@ -21,7 +21,7 @@ BEGIN
   END
 
   /* Clean old rows */
-  DELETE FROM dbo.report_workload WHERE client_id=@client_id;
+  DELETE FROM dbo.report_burnout WHERE client_id=@client_id;
 
   /* Weights & thresholds */
   DECLARE
@@ -155,7 +155,7 @@ BEGIN
     ON i.intervention_id = w.intervention_id;
 
   /* Persist */
-  INSERT INTO dbo.report_workload
+  INSERT INTO dbo.report_burnout
   (
     client_id, emp_id, department, emp_role, site_name,
     risk_score, risk_type,

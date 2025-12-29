@@ -21,7 +21,7 @@ BEGIN
   Parameters:
     @client_id - Client identifier (required)
   
-  Returns:   None (inserts into report_workload table with risk_score)
+  Returns:   None (inserts into report_burnout table with risk_score)
   
   Multi-tenant: Yes - all operations filtered by @client_id
   Transaction:  Yes - wrapped with error handling
@@ -319,7 +319,7 @@ BEGIN
   -- CLEAN OLD DATA
   -- ========================================================================
   
-  DELETE FROM dbo.report_workload WHERE client_id=@client_id;
+  DELETE FROM dbo.report_burnout WHERE client_id=@client_id;
   
   -- ========================================================================
   -- CALCULATE BURNOUT RISK SCORES
@@ -526,10 +526,10 @@ BEGIN
   FROM #risk_scores rs;
   
   -- ========================================================================
-  -- INSERT INTO report_workload TABLE
+  -- INSERT INTO report_burnout TABLE
   -- ========================================================================
   
-  INSERT INTO dbo.report_workload
+  INSERT INTO dbo.report_burnout
   (
     client_id,
     emp_id,
@@ -578,7 +578,7 @@ BEGIN
   
   IF @@ROWCOUNT = 0
   BEGIN
-    RAISERROR('usp_calc_burnout_risk_score: No rows inserted into report_workload for client_id=%s. Check minimum data requirements.', 10, 1, @client_id);
+    RAISERROR('usp_calc_burnout_risk_score: No rows inserted into report_burnout for client_id=%s. Check minimum data requirements.', 10, 1, @client_id);
   END
   
 END

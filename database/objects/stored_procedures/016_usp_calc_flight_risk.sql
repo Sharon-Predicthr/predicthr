@@ -1,18 +1,18 @@
 
-/****** Object:  StoredProcedure [dbo].[usp_calc_flight_risk]    Script Date: 22/12/2025 ******/
+/****** Object:  StoredProcedure [dbo].[usp_calc_flight_risk_score]    Script Date: 22/12/2025 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[usp_calc_flight_risk]
+CREATE OR ALTER PROCEDURE [dbo].[usp_calc_flight_risk_score]
   @client_id NVARCHAR(50)
 AS
 BEGIN
   /*
   ================================================================================
-  Procedure: usp_calc_flight_risk
+  Procedure: usp_calc_flight_risk_score
   Purpose:   Calculate flight risk score for employees based on attendance pattern
              changes comparing baseline vs recent periods. Uses weighted scoring
              model with configurable thresholds.
@@ -33,7 +33,7 @@ BEGIN
   -- Guard clause
   IF @client_id IS NULL OR LTRIM(RTRIM(@client_id)) = N''
   BEGIN
-    RAISERROR('usp_calc_flight_risk: @client_id is required.', 16, 1);
+    RAISERROR('usp_calc_flight_risk_score: @client_id is required.', 16, 1);
     RETURN;
   END
   
@@ -452,7 +452,7 @@ BEGIN
   
   IF @@ROWCOUNT = 0
   BEGIN
-    RAISERROR('usp_calc_flight_risk: No rows inserted into report_flight for client_id=%s. Check minimum data requirements.', 10, 1, @client_id);
+    RAISERROR('usp_calc_flight_risk_score: No rows inserted into report_flight for client_id=%s. Check minimum data requirements.', 10, 1, @client_id);
   END
   
 END
