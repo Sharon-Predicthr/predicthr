@@ -138,7 +138,7 @@ BEGIN
       ON ewc.client_id = wc.client_id
     WHERE 
       -- Filter 1: Employee must have worked for at least 6 months
-      COALESCE(emp.work_start, ewc.first_session_date) <= DATEADD(MONTH, -6, wc.last_company_workday)
+      COALESCE(emp.work_start, ewc.first_session_date) <= DATEADD(MONTH, -4, wc.last_company_workday)
       -- Filter 2: Employee must have worked in the past 2 months
       AND ewc.last_session_date >= DATEADD(MONTH, -2, wc.last_company_workday);
     
@@ -544,3 +544,4 @@ BEGIN
   
 END
 GO
+
