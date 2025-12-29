@@ -369,9 +369,9 @@ BEGIN
   EXEC dbo.usp_calc_periods            @client_id=@client_id;
   EXEC dbo.usp_update_adjusted_metrics @client_id=@client_id;
 
-  EXEC dbo.usp_calc_flight           @client_id=@client_id;
-  EXEC dbo.usp_calc_integrity        @client_id=@client_id;
-  EXEC dbo.usp_calc_burnout          @client_id=@client_id;
+  EXEC dbo.usp_calc_flight_risk_score   @client_id=@client_id;
+  EXEC dbo.usp_calc_fraud_risk_score    @client_id=@client_id;
+  EXEC dbo.usp_calc_burnout_risk_score  @client_id=@client_id;
 
   ---------------------------------------------------------------------------
   -- 8) Summary
@@ -387,3 +387,4 @@ BEGIN
     date_max     = @max_d;
 END
 GO
+
