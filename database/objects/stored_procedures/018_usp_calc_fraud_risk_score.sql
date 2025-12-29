@@ -162,8 +162,8 @@ BEGIN
     -- Calculate average sessions per day from attendance table (all punches per day)
     CASE 
       WHEN COUNT(DISTINCT CAST(a.event_date AS DATE)) > 0
-      THEN CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT CAST(a.event_date AS DATE))
-      ELSE 0.0
+      THEN CAST(COUNT(DISTINCT CAST(a.event_date AS DATE)) AS FLOAT) / COUNT(DISTINCT CAST(a.event_date AS DATE))
+     ELSE 0.0
     END AS avg_sessions_per_day
   INTO #emp_metrics
   FROM dbo.calculated_data cd
@@ -496,4 +496,5 @@ BEGIN
   
 END
 GO
+
 
