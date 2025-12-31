@@ -43,11 +43,11 @@ echo "Running build script: $BUILD_SCRIPT"
 # OBJECTS
 ###########################################################
 
-echo "Applying TABLES..."
-for f in /db/objects/tables/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+#echo "Applying TABLES..."
+#for f in /db/objects/tables/*.sql; do
+#  echo "Running $f"
+#  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
+#done
 
 #echo "Applying FUNCTIONS..."
 #for f in /db/objects/functions/*.sql; do
@@ -55,17 +55,17 @@ done
 #  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
 #done
 
-echo "Applying STORED PROCEDURES..."
-for f in /db/objects/stored_procedures/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+#echo "Applying STORED PROCEDURES..."
+#for f in /db/objects/stored_procedures/*.sql; do
+#  echo "Running $f"
+#  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
+#done
 
-echo "Applying VIEWS..."
-for f in /db/objects/views/*.sql; do
-  echo "Running $f"
-  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
-done
+#echo "Applying VIEWS..."
+#for f in /db/objects/views/*.sql; do
+#  echo "Running $f"
+#  /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -i "$f"
+#done
 
 ###########################################################
 # MIGRATIONS
