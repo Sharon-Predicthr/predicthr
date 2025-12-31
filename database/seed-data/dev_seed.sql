@@ -45,7 +45,10 @@ USING (VALUES
   (NULL,N'recent_months','3'),
   (NULL,N'baseline_min_days','15')
 ) AS source (client_id, config_key, config_value)
-ON target.client_id = source.client_id AND target.config_key = source.config_key
+ON ISNULL(target.client_id, '') = ISNULL(source.client_id, '') 
+   AND target.config_key = source.config_key
+WHEN MATCHED THEN
+  UPDATE SET config_value = source.config_value
 WHEN NOT MATCHED THEN
   INSERT (client_id, config_key, config_value)
   VALUES (source.client_id, source.config_key, source.config_value);
