@@ -13,6 +13,6 @@ GO
 CREATE OR ALTER   VIEW [dbo].[v_client_emp_department] AS
 SELECT client_id, emp_id, MIN(department) AS department
 FROM dbo.attendance
-GROUP BY client_id, emp_id, department
+WHERE department IS NOT NULL
+GROUP BY client_id, emp_id
 GO
-
