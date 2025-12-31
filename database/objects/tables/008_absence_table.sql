@@ -18,6 +18,6 @@ CREATE INDEX IX_absence_client_emp_date
 
 CREATE INDEX IX_absence_client_date_dept
   ON dbo.absence(client_id, from_date)
-  INCLUDE(emp_id, department);
+  INCLUDE(emp_id);
 END
 GO
