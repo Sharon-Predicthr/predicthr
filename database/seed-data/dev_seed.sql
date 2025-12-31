@@ -2,47 +2,7 @@ PRINT 'SEED STARTED';
 GO
 
 /* ---- GLOBAL DEFAULTS (client_id = NULL) ---- */
-  INSERT INTO dbo.risk_config(client_id, config_key, config_value) VALUES
-    (NULL, 'calendar_work_threshold_pct', '30'),
-    (NULL, 'short_session_minutes',       '180'),
-    (NULL, 'odd_min_minutes',             '10'),
-    (NULL, 'odd_max_minutes',             '60'),
-    (NULL, 'long_day_minutes',            '600'),
-    (NULL, 'late_start_hhmm',             '10:00'),
-
-    -- Flight
-    (NULL, 'flight_w_drop',               '0.70'),
-    (NULL, 'flight_w_short',              '0.10'),
-    (NULL, 'flight_w_streak',             '0.20'),
-    (NULL, 'flight_scale_min_recent_days','10'),
-    (NULL, 'flight_intervention_min_score','15'),
-
-    -- Integrity
-    (NULL, 'integrity_w_odd',             '0.50'),
-    (NULL, 'integrity_w_door',            '0.30'),
-    (NULL, 'integrity_w_ping',            '0.20'),
-
-    -- Workload
-    (NULL, 'workload_w_long',             '0.60'),
-    (NULL, 'workload_w_late',             '0.40'),
-    (NULL, 'workload_bonus_points',       '5'),
-    (NULL, 'workload_bonus_delta_pct',    '10'),
-	(NULL,'integrity_intervention_min_score','15'),
-	(NULL,'workload_intervention_min_score','15'),
-
-    -- baseline vs. recent
-	(NULL,N'window_baseline_pct','70'),
-	(NULL,N'recent_min_days','20'),
-	(NULL,N'recent_max_days','45'),
-	(NULL,N'holiday_coverage_threshold_pct','15'),
-	(NULL,N'dept_holiday_threshold_pct','25'),
-	(NULL,N'pto_min_block_days','5'),
-	(NULL,N'sick_max_block_days','3'),
---	(NULL,N'legit_conf_full_exclude_min','0.6'),
---	(NULL,N'legit_conf_partial_min','0.3'),	
-	(NULL,N'baseline_months','9'),
-	(NULL,N'recent_months','3'),	
-	(NULL,N'baseline_min_days','15');
+  MERGE dbo.risk_config AS target USING (VALUES (NULL, 'calendar_work_threshold_pct', '30'), (NULL, 'short_session_minutes', '180'), (NULL, 'odd_min_minutes', '10'), (NULL, 'odd_max_minutes', '60'), (NULL, 'long_day_minutes', '600'), (NULL, 'late_start_hhmm', '10:00'), -- Flight (NULL, 'flight_w_drop', '0.70'), (NULL, 'flight_w_short', '0.10'), (NULL, 'flight_w_streak', '0.20'), (NULL, 'flight_scale_min_recent_days','10'), (NULL, 'flight_intervention_min_score','15'), -- Integrity (NULL, 'integrity_w_odd', '0.50'), (NULL, 'integrity_w_door', '0.30'), (NULL, 'integrity_w_ping', '0.20'), -- Workload (NULL, 'workload_w_long', '0.60'), (NULL, 'workload_w_late', '0.40'), (NULL, 'workload_bonus_points', '5'), (NULL, 'workload_bonus_delta_pct', '10'), (NULL,'integrity_intervention_min_score','15'), (NULL,'workload_intervention_min_score','15'), -- baseline vs. recent (NULL,N'window_baseline_pct','70'), (NULL,N'recent_min_days','20'), (NULL,N'recent_max_days','45'), (NULL,N'holiday_coverage_threshold_pct','15'), (NULL,N'dept_holiday_threshold_pct','25'), (NULL,N'pto_min_block_days','5'), (NULL,N'sick_max_block_days','3'), -- (NULL,N'legit_conf_full_exclude_min','0.6'), -- (NULL,N'legit_conf_partial_min','0.3'), (NULL,N'baseline_months','9'), (NULL,N'recent_months','3'), (NULL,N'baseline_min_days','15') ) AS source (client_id, config_key, config_value) ON target.client_id = source.client_id AND target.config_key = source.config_key WHEN NOT MATCHED THEN INSERT (client_id, config_key, config_value) VALUES (source.client_id, source.config_key, source.config_value);
 
 
 /* seed interventions (dynamic to avoid compile-time name checks) */
@@ -134,3 +94,4 @@ EXEC sys.sp_executesql @sql;
   SELECT @min=60, @max=79, @name=N'Badge/Access Audit',      @prio=3; EXEC sys.sp_executesql @add, N'@name nvarchar(200),@rtype nvarchar(40),@min int,@max int,@prio int', @name,@rtype,@min,@max,@prio;
 
 GO
+
