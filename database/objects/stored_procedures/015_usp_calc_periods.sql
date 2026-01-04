@@ -352,11 +352,11 @@ BEGIN
       ep.client_id,
       ep.emp_id,
       
-      -- Period boundaries (as DATETIME for table compatibility)
-      CAST(ep.recent_start AS DATETIME) AS recent_start,
-      CAST(ep.recent_end AS DATETIME) AS recent_end,
-      CAST(ep.baseline_start AS DATETIME) AS baseline_start,
-      CAST(ep.baseline_end AS DATETIME) AS baseline_end,
+      -- Period boundaries (as DATE)
+      CAST(ep.recent_start AS DATE) AS recent_start,
+      CAST(ep.recent_end AS DATE) AS recent_end,
+      CAST(ep.baseline_start AS DATE) AS baseline_start,
+      CAST(ep.baseline_end AS DATE) AS baseline_end,
       
       -- Workdays (per employee - based on their specific period boundaries)
       ISNULL(wd.workdays_r, 0) AS workdays_r,
@@ -366,15 +366,15 @@ BEGIN
       ISNULL(p.presence_r, 0) AS presence_r,
       ISNULL(p.presence_b, 0) AS presence_b,
       
-      -- Presence percentages (as FLOAT, not formatted string)
+      -- Presence percentages (rounded down to 2 decimal places)
       CASE 
         WHEN ISNULL(wd.workdays_r, 0) > 0 
-        THEN CAST(ISNULL(p.presence_r, 0) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)
+        THEN FLOOR((CAST(ISNULL(p.presence_r, 0) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)) * 100.0) / 100.0
         ELSE 0.0
       END AS presence_pct_r,
       CASE 
         WHEN ISNULL(wd.workdays_b, 0) > 0 
-        THEN CAST(ISNULL(p.presence_b, 0) AS FLOAT) / CAST(wd.workdays_b AS FLOAT)
+        THEN FLOOR((CAST(ISNULL(p.presence_b, 0) AS FLOAT) / CAST(wd.workdays_b AS FLOAT)) * 100.0) / 100.0
         ELSE 0.0
       END AS presence_pct_b,
       
@@ -382,9 +382,9 @@ BEGIN
       ISNULL(p.non_workday_presence_r, 0) AS non_workday_presence_r,
       ISNULL(p.non_workday_presence_b, 0) AS non_workday_presence_b,
       
-      -- Time metrics
-      ISNULL(tm.avg_minutes_r, 0.0) AS avg_minutes_r,
-      ISNULL(tm.avg_minutes_b, 0.0) AS avg_minutes_b,
+      -- Time metrics (rounded down to 2 decimal places)
+      FLOOR(ISNULL(tm.avg_minutes_r, 0.0) * 100.0) / 100.0 AS avg_minutes_r,
+      FLOOR(ISNULL(tm.avg_minutes_b, 0.0) * 100.0) / 100.0 AS avg_minutes_b,
       ISNULL(tm.avg_arrival_r, CAST('00:00:00' AS TIME)) AS avg_arrival_r,
       ISNULL(tm.avg_arrival_b, CAST('00:00:00' AS TIME)) AS avg_arrival_b,
       ISNULL(tm.avg_departure_r, CAST('00:00:00' AS TIME)) AS avg_departure_r,
@@ -394,15 +394,15 @@ BEGIN
       ISNULL(wd.workdays_r, 0) - ISNULL(p.presence_r, 0) AS absence_r,
       ISNULL(wd.workdays_b, 0) - ISNULL(p.presence_b, 0) AS absence_b,
       
-      -- Absence percentages
+      -- Absence percentages (rounded down to 2 decimal places)
       CASE 
         WHEN ISNULL(wd.workdays_r, 0) > 0 
-        THEN CAST((ISNULL(wd.workdays_r, 0) - ISNULL(p.presence_r, 0)) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)
+        THEN FLOOR((CAST((ISNULL(wd.workdays_r, 0) - ISNULL(p.presence_r, 0)) AS FLOAT) / CAST(wd.workdays_r AS FLOAT)) * 100.0) / 100.0
         ELSE 0.0
       END AS absence_pct_r,
       CASE 
         WHEN ISNULL(wd.workdays_b, 0) > 0 
-        THEN CAST((ISNULL(wd.workdays_b, 0) - ISNULL(p.presence_b, 0)) AS FLOAT) / CAST(wd.workdays_b AS FLOAT)
+        THEN FLOOR((CAST((ISNULL(wd.workdays_b, 0) - ISNULL(p.presence_b, 0)) AS FLOAT) / CAST(wd.workdays_b AS FLOAT)) * 100.0) / 100.0
         ELSE 0.0
       END AS absence_pct_b
       

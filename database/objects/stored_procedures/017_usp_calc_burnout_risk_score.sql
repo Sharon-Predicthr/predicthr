@@ -303,6 +303,8 @@ BEGIN
       TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id IS NULL AND config_key='burnout_risk_min_recent_days') AS INT), 7);
   
   -- Normalize weights (in case they don't sum to 100)
+  -- Note: @w_multi_factor_bonus is intentionally excluded from normalization as it's a bonus
+  -- added after base score calculation, not a base feature weight
   DECLARE @weight_sum FLOAT = @w_hours_increase + @w_arrival_earlier + @w_departure_later + 
                                @w_non_workday_increase + @w_sustained_presence + @w_working_while_sick;
   IF @weight_sum > 0
@@ -357,7 +359,8 @@ BEGIN
       ELSE 0.0
     END AS avg_minutes_delta_pct,
     
-    -- Arrival: EARLIER (negative delta in minutes: recent - baseline)
+    -- Arrival: EARLIER (negative delta in minutes: baseline - recent)
+    -- Positive value means baseline arrival is later than recent = employee arriving earlier (risk indicator)
     DATEDIFF(MINUTE, CAST(cpm.avg_arrival_r AS TIME), CAST(cpm.avg_arrival_b AS TIME)) AS arrival_delta_minutes,
     
     -- Departure: LATER (positive delta in minutes: recent - baseline)
@@ -393,9 +396,9 @@ BEGIN
     CASE 
       WHEN rc.avg_minutes_delta_pct > 0 
       THEN CASE 
-        WHEN rc.avg_minutes_delta_pct * @w_hours_increase * 100.0 > @w_hours_increase 
+        WHEN rc.avg_minutes_delta_pct * @w_hours_increase > @w_hours_increase 
         THEN @w_hours_increase
-        ELSE rc.avg_minutes_delta_pct * @w_hours_increase * 100.0
+        ELSE rc.avg_minutes_delta_pct * @w_hours_increase
       END
       ELSE 0.0
     END AS hours_risk_score,
@@ -409,21 +412,23 @@ BEGIN
     END AS hours_multiplier,
     
     -- 2. Earlier Arrival Score (0 to @w_arrival_earlier)
+    -- Note: arrival_delta_minutes is positive when employee arrives earlier (baseline > recent)
+    -- We check for values >= threshold_moderate to ensure continuity in scoring
     CASE 
-      WHEN rc.arrival_delta_minutes < -@arrival_threshold_moderate  -- Negative = earlier
+      WHEN rc.arrival_delta_minutes >= @arrival_threshold_moderate  -- Positive = earlier arrival
       THEN CASE
-        WHEN ABS(rc.arrival_delta_minutes) / 60.0 * @w_arrival_earlier > @w_arrival_earlier
+        WHEN rc.arrival_delta_minutes / 60.0 * @w_arrival_earlier > @w_arrival_earlier
         THEN @w_arrival_earlier
-        ELSE ABS(rc.arrival_delta_minutes) / 60.0 * @w_arrival_earlier
+        ELSE rc.arrival_delta_minutes / 60.0 * @w_arrival_earlier
       END
       ELSE 0.0
     END AS arrival_risk_score,
     
-    -- Arrival multiplier
+    -- Arrival multiplier (using positive values since arrival_delta_minutes is positive for earlier arrivals)
     CASE 
-      WHEN rc.arrival_delta_minutes < -@arrival_threshold_critical THEN @arrival_mult_critical
-      WHEN rc.arrival_delta_minutes < -@arrival_threshold_high THEN @arrival_mult_high
-      WHEN rc.arrival_delta_minutes < -@arrival_threshold_moderate THEN @arrival_mult_moderate
+      WHEN rc.arrival_delta_minutes >= @arrival_threshold_critical THEN @arrival_mult_critical
+      WHEN rc.arrival_delta_minutes >= @arrival_threshold_high THEN @arrival_mult_high
+      WHEN rc.arrival_delta_minutes >= @arrival_threshold_moderate THEN @arrival_mult_moderate
       ELSE 1.0
     END AS arrival_multiplier,
     
@@ -466,6 +471,8 @@ BEGIN
     END AS non_workday_multiplier,
     
     -- 5. Sustained High Presence Score (0 to @w_sustained_presence)
+    -- Requires presence maintained or increased (presence_pct_r >= presence_pct_b)
+    -- Tiered scoring: Critical (98%+) = 100%, High (95-97.9%) = 70%, Moderate (90-94.9%) = 40%
     CASE 
       WHEN rc.presence_pct_r >= @presence_threshold_moderate AND rc.presence_pct_r >= rc.presence_pct_b
       THEN CASE
@@ -477,19 +484,24 @@ BEGIN
     END AS sustained_presence_score,
     
     -- 6. Working While Sick Pattern Score (0 to @w_working_while_sick)
+    -- Requires BOTH absence decrease AND hours increase
+    -- Note: Only applies when baseline absence > 0 (to avoid false positives from zero baseline absence)
     CASE 
-      WHEN rc.absence_delta_pct > @working_sick_absence_threshold_high 
+      WHEN rc.absence_pct_b > 0  -- Only check if there was baseline absence to eliminate
+           AND rc.absence_delta_pct > @working_sick_absence_threshold_high 
            AND rc.avg_minutes_delta_pct > @working_sick_hours_threshold_high
       THEN @w_working_while_sick
-      WHEN rc.absence_delta_pct > @working_sick_absence_threshold_moderate 
+      WHEN rc.absence_pct_b > 0  -- Only check if there was baseline absence to eliminate
+           AND rc.absence_delta_pct > @working_sick_absence_threshold_moderate 
            AND rc.avg_minutes_delta_pct > @working_sick_hours_threshold_moderate
       THEN @w_working_while_sick * 0.6
       ELSE 0.0
     END AS working_while_sick_score,
     
     -- Count overwork factors for multi-factor bonus
+    -- Note: arrival_delta_minutes is positive for earlier arrivals, so we check >= threshold
     CASE WHEN rc.avg_minutes_delta_pct > @multi_factor_threshold_hours_pct THEN 1 ELSE 0 END +
-    CASE WHEN rc.arrival_delta_minutes < -@multi_factor_threshold_arrival_min THEN 1 ELSE 0 END +
+    CASE WHEN rc.arrival_delta_minutes >= @multi_factor_threshold_arrival_min THEN 1 ELSE 0 END +
     CASE WHEN rc.departure_delta_minutes > @multi_factor_threshold_departure_min THEN 1 ELSE 0 END +
     CASE WHEN rc.non_workday_delta > @multi_factor_threshold_non_workday THEN 1 ELSE 0 END +
     CASE WHEN rc.presence_pct_r >= @presence_threshold_moderate AND rc.presence_pct_r >= rc.presence_pct_b THEN 1 ELSE 0 END AS overwork_factors

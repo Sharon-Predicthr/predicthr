@@ -153,6 +153,8 @@ BEGIN
       TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id IS NULL AND config_key='flight_risk_absence_mult_high') AS FLOAT), 1.2),
       
     -- Multi-factor decline thresholds
+    -- Note: Both threshold_2 and threshold_3 use the same config value (5% default)
+    -- This is intentional - both attendance and hours decline use the same threshold for multi-factor detection
     @multi_factor_threshold_2 = COALESCE(
       TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id=@client_id AND config_key='flight_risk_multi_factor_threshold_pct') AS FLOAT),
       TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id IS NULL AND config_key='flight_risk_multi_factor_threshold_pct') AS FLOAT), 0.05),
@@ -262,6 +264,8 @@ BEGIN
     END AS avg_minutes_delta_pct,
     
     DATEDIFF(MINUTE, CAST(cpm.avg_arrival_b AS TIME), CAST(cpm.avg_arrival_r AS TIME)) AS arrival_delta_minutes,
+    -- Departure delta: positive value means earlier departure in recent period (baseline departure > recent departure)
+    -- This indicates disengagement and is a risk factor
     DATEDIFF(MINUTE, CAST(cpm.avg_departure_r AS TIME), CAST(cpm.avg_departure_b AS TIME)) AS departure_delta_minutes,
     
     CAST(cpm.non_workday_presence_r AS FLOAT) - CAST(cpm.non_workday_presence_b AS FLOAT) AS non_workday_delta
@@ -285,9 +289,9 @@ BEGIN
     CASE 
       WHEN rc.presence_pct_delta > 0 
       THEN CASE 
-        WHEN rc.presence_pct_delta * @w_attendance_decline * 100.0 > @w_attendance_decline 
+        WHEN rc.presence_pct_delta * @w_attendance_decline > @w_attendance_decline 
         THEN @w_attendance_decline
-        ELSE rc.presence_pct_delta * @w_attendance_decline * 100.0
+        ELSE rc.presence_pct_delta * @w_attendance_decline
       END
       ELSE 0.0
     END AS attendance_risk_score,
@@ -304,9 +308,9 @@ BEGIN
     CASE 
       WHEN rc.absence_pct_delta > 0 
       THEN CASE
-        WHEN rc.absence_pct_delta * @w_absence_increase * 100.0 > @w_absence_increase
+        WHEN rc.absence_pct_delta * @w_absence_increase > @w_absence_increase
         THEN @w_absence_increase
-        ELSE rc.absence_pct_delta * @w_absence_increase * 100.0
+        ELSE rc.absence_pct_delta * @w_absence_increase
       END
       ELSE 0.0
     END AS absence_risk_score,
@@ -322,9 +326,9 @@ BEGIN
     CASE 
       WHEN rc.avg_minutes_delta_pct > 0 
       THEN CASE
-        WHEN rc.avg_minutes_delta_pct * @w_hours_decline * 100.0 > @w_hours_decline
+        WHEN rc.avg_minutes_delta_pct * @w_hours_decline > @w_hours_decline
         THEN @w_hours_decline
-        ELSE rc.avg_minutes_delta_pct * @w_hours_decline * 100.0
+        ELSE rc.avg_minutes_delta_pct * @w_hours_decline
       END
       ELSE 0.0
     END AS hours_risk_score,
@@ -352,12 +356,13 @@ BEGIN
     END AS departure_risk_score,
     
     -- 6. Non-Workday Presence Change Score (0 to @w_non_workday_change)
+    -- Only penalize increases in non-workday presence (disengagement indicator)
     CASE 
-      WHEN ABS(rc.non_workday_delta) > 0
+      WHEN rc.non_workday_delta > 0
       THEN CASE
-        WHEN ABS(rc.non_workday_delta) / 5.0 * @w_non_workday_change > @w_non_workday_change
+        WHEN rc.non_workday_delta / 5.0 * @w_non_workday_change > @w_non_workday_change
         THEN @w_non_workday_change
-        ELSE ABS(rc.non_workday_delta) / 5.0 * @w_non_workday_change
+        ELSE rc.non_workday_delta / 5.0 * @w_non_workday_change
       END
       ELSE 0.0
     END AS non_workday_risk_score,

@@ -44,6 +44,17 @@ BEGIN
     RETURN;
   END
   
+  -- Validate that required metrics are populated (at least some non-NULL values)
+  IF NOT EXISTS (
+    SELECT 1 FROM dbo.calculated_data 
+    WHERE client_id = @client_id 
+      AND (door_mis_pct_r IS NOT NULL OR pingpong_pct_r IS NOT NULL OR odd_pct_r IS NOT NULL)
+  )
+  BEGIN
+    RAISERROR('Required fraud metrics (door_mis_pct_r, pingpong_pct_r, odd_pct_r) are not populated in calculated_data for client_id=%s.', 16, 1, @client_id);
+    RETURN;
+  END
+  
   -- ========================================================================
   -- LOAD CONFIGURABLE PARAMETERS FROM risk_config TABLE
   -- ========================================================================
@@ -108,7 +119,9 @@ BEGIN
       TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id=@client_id AND config_key='fraud_risk_threshold_high') AS INT),
       TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id IS NULL AND config_key='fraud_risk_threshold_high') AS INT), 80);
   
-  -- Normalize weights
+  -- Normalize weights (in case they don't sum to 100)
+  -- Note: @w_multi_factor_bonus is intentionally excluded from normalization as it's a bonus
+  -- added after base score calculation, not a base feature weight
   DECLARE @weight_sum FLOAT = @w_door_mismatch + @w_pingpong + @w_odd_hours + 
                                @w_session_length + @w_sessions_per_day;
   IF @weight_sum > 0
@@ -123,15 +136,38 @@ BEGIN
   -- ========================================================================
   -- GET ANALYSIS PERIOD (use recent period from calculated_data)
   -- ========================================================================
+  -- Validate that all employees have the same analysis period
+  -- If periods differ, use the most common period (or first if all unique)
   
   DECLARE @analysis_start DATE, @analysis_end DATE;
   
-  SELECT TOP(1) 
-    @analysis_start = recent_start,
-    @analysis_end = recent_end
+  -- Check if all employees have the same period
+  DECLARE @period_count INT;
+  SELECT @period_count = COUNT(DISTINCT CAST(recent_start AS VARCHAR) + '|' + CAST(recent_end AS VARCHAR))
   FROM dbo.calculated_data
-  WHERE client_id = @client_id
-  ORDER BY recent_start;
+  WHERE client_id = @client_id;
+  
+  IF @period_count > 1
+  BEGIN
+    -- Multiple periods detected - use the most common period
+    SELECT TOP(1) 
+      @analysis_start = recent_start,
+      @analysis_end = recent_end
+    FROM dbo.calculated_data
+    WHERE client_id = @client_id
+    GROUP BY recent_start, recent_end
+    ORDER BY COUNT(*) DESC, recent_start;
+  END
+  ELSE
+  BEGIN
+    -- All employees have the same period
+    SELECT TOP(1) 
+      @analysis_start = recent_start,
+      @analysis_end = recent_end
+    FROM dbo.calculated_data
+    WHERE client_id = @client_id
+    ORDER BY recent_start;
+  END
   
   -- ========================================================================
   -- STEP 1: CALCULATE EMPLOYEE-LEVEL METRICS
@@ -160,9 +196,10 @@ BEGIN
       ELSE 0.0
     END AS avg_session_minutes,
     -- Calculate average sessions per day from attendance table (all punches per day)
+    -- Count all sessions (COUNT(*)) divided by distinct dates
     CASE 
       WHEN COUNT(DISTINCT CAST(a.event_date AS DATE)) > 0
-      THEN CAST(COUNT(DISTINCT CAST(a.event_date AS DATE)) AS FLOAT) / COUNT(DISTINCT CAST(a.event_date AS DATE))
+      THEN CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT CAST(a.event_date AS DATE))
      ELSE 0.0
     END AS avg_sessions_per_day
   INTO #emp_metrics
@@ -304,7 +341,18 @@ BEGIN
       WHEN peer_group_size_dept_role >= @min_peer_group_size THEN std_sessions_per_day_dept_role
       WHEN peer_group_size_dept >= @min_peer_group_size THEN std_sessions_per_day_dept
       ELSE std_sessions_per_day_client
-    END AS peer_std_sessions_per_day
+    END AS peer_std_sessions_per_day,
+    -- Client-wide stats for fallback when peer group std dev is 0
+    mean_door_mismatch_client AS peer_mean_door_mismatch_client,
+    mean_pingpong_client AS peer_mean_pingpong_client,
+    mean_odd_hours_client AS peer_mean_odd_hours_client,
+    mean_session_length_client AS peer_mean_session_length_client,
+    mean_sessions_per_day_client AS peer_mean_sessions_per_day_client,
+    std_door_mismatch_client AS peer_std_door_mismatch_client,
+    std_pingpong_client AS peer_std_pingpong_client,
+    std_odd_hours_client AS peer_std_odd_hours_client,
+    std_session_length_client AS peer_std_session_length_client,
+    std_sessions_per_day_client AS peer_std_sessions_per_day_client
   INTO #peer_stats
   FROM peer_groups;
   
@@ -323,30 +371,40 @@ BEGIN
     ps.peer_mean_odd_hours,
     ps.peer_mean_session_length,
     ps.peer_mean_sessions_per_day,
-    -- Calculate Z-scores (handle division by zero)
+    -- Calculate Z-scores (handle division by zero, fall back to client-wide stats if peer std dev is 0)
     CASE 
       WHEN ps.peer_std_door_mismatch > 0 
       THEN (em.door_mismatch_pct - ps.peer_mean_door_mismatch) / ps.peer_std_door_mismatch
+      WHEN ps.peer_std_door_mismatch_client > 0 
+      THEN (em.door_mismatch_pct - ps.peer_mean_door_mismatch_client) / ps.peer_std_door_mismatch_client
       ELSE 0.0
     END AS door_mismatch_zscore,
     CASE 
       WHEN ps.peer_std_pingpong > 0 
       THEN (em.pingpong_pct - ps.peer_mean_pingpong) / ps.peer_std_pingpong
+      WHEN ps.peer_std_pingpong_client > 0 
+      THEN (em.pingpong_pct - ps.peer_mean_pingpong_client) / ps.peer_std_pingpong_client
       ELSE 0.0
     END AS pingpong_zscore,
     CASE 
       WHEN ps.peer_std_odd_hours > 0 
       THEN (em.odd_hours_pct - ps.peer_mean_odd_hours) / ps.peer_std_odd_hours
+      WHEN ps.peer_std_odd_hours_client > 0 
+      THEN (em.odd_hours_pct - ps.peer_mean_odd_hours_client) / ps.peer_std_odd_hours_client
       ELSE 0.0
     END AS odd_hours_zscore,
     CASE 
       WHEN ps.peer_std_session_length > 0 
       THEN (em.avg_session_minutes - ps.peer_mean_session_length) / ps.peer_std_session_length
+      WHEN ps.peer_std_session_length_client > 0 
+      THEN (em.avg_session_minutes - ps.peer_mean_session_length_client) / ps.peer_std_session_length_client
       ELSE 0.0
     END AS session_length_zscore,
     CASE 
       WHEN ps.peer_std_sessions_per_day > 0 
       THEN (em.avg_sessions_per_day - ps.peer_mean_sessions_per_day) / ps.peer_std_sessions_per_day
+      WHEN ps.peer_std_sessions_per_day_client > 0 
+      THEN (em.avg_sessions_per_day - ps.peer_mean_sessions_per_day_client) / ps.peer_std_sessions_per_day_client
       ELSE 0.0
     END AS sessions_per_day_zscore
   INTO #fraud_scores
@@ -361,29 +419,65 @@ BEGIN
   ALTER TABLE #fraud_scores ADD sessions_per_day_percentile FLOAT;
   ALTER TABLE #fraud_scores ADD fraud_risk_score INT;
   
-  -- Calculate percentiles from Z-scores (approximation: 50 + z*20, capped at 0-100)
+  -- Calculate percentiles from Z-scores using lookup table for accuracy
   -- Note: Only positive Z-scores indicate fraud risk (above average)
+  -- For session_length, negative Z-scores (very short sessions) also indicate risk
+  DECLARE @session_length_negative_threshold FLOAT;
+  SET @session_length_negative_threshold = COALESCE(
+    TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id=@client_id AND config_key='fraud_risk_session_length_negative_threshold') AS FLOAT),
+    TRY_CAST((SELECT TOP(1) config_value FROM dbo.risk_config WHERE client_id IS NULL AND config_key='fraud_risk_session_length_negative_threshold') AS FLOAT), -2.0);
+  
   UPDATE fs
   SET 
     door_mismatch_percentile = CASE 
-      WHEN fs.door_mismatch_zscore > 0 THEN CASE WHEN 50 + (fs.door_mismatch_zscore * 20) > 100 THEN 100 ELSE 50 + (fs.door_mismatch_zscore * 20) END
+      WHEN fs.door_mismatch_zscore >= 3.0 THEN 100.0
+      WHEN fs.door_mismatch_zscore >= 2.5 THEN 99.4
+      WHEN fs.door_mismatch_zscore >= 2.0 THEN 97.7
+      WHEN fs.door_mismatch_zscore >= 1.5 THEN 93.3
+      WHEN fs.door_mismatch_zscore >= 1.0 THEN 84.1
+      WHEN fs.door_mismatch_zscore >= 0.5 THEN 69.1
+      WHEN fs.door_mismatch_zscore > 0 THEN 50.0 + (fs.door_mismatch_zscore * 20.0)  -- Linear for small Z
       ELSE 0.0
     END,
     pingpong_percentile = CASE 
-      WHEN fs.pingpong_zscore > 0 THEN CASE WHEN 50 + (fs.pingpong_zscore * 20) > 100 THEN 100 ELSE 50 + (fs.pingpong_zscore * 20) END
+      WHEN fs.pingpong_zscore >= 3.0 THEN 100.0
+      WHEN fs.pingpong_zscore >= 2.5 THEN 99.4
+      WHEN fs.pingpong_zscore >= 2.0 THEN 97.7
+      WHEN fs.pingpong_zscore >= 1.5 THEN 93.3
+      WHEN fs.pingpong_zscore >= 1.0 THEN 84.1
+      WHEN fs.pingpong_zscore >= 0.5 THEN 69.1
+      WHEN fs.pingpong_zscore > 0 THEN 50.0 + (fs.pingpong_zscore * 20.0)  -- Linear for small Z
       ELSE 0.0
     END,
     odd_hours_percentile = CASE 
-      WHEN fs.odd_hours_zscore > 0 THEN CASE WHEN 50 + (fs.odd_hours_zscore * 20) > 100 THEN 100 ELSE 50 + (fs.odd_hours_zscore * 20) END
+      WHEN fs.odd_hours_zscore >= 3.0 THEN 100.0
+      WHEN fs.odd_hours_zscore >= 2.5 THEN 99.4
+      WHEN fs.odd_hours_zscore >= 2.0 THEN 97.7
+      WHEN fs.odd_hours_zscore >= 1.5 THEN 93.3
+      WHEN fs.odd_hours_zscore >= 1.0 THEN 84.1
+      WHEN fs.odd_hours_zscore >= 0.5 THEN 69.1
+      WHEN fs.odd_hours_zscore > 0 THEN 50.0 + (fs.odd_hours_zscore * 20.0)  -- Linear for small Z
       ELSE 0.0
     END,
     session_length_percentile = CASE 
-      WHEN fs.session_length_zscore > 0 THEN CASE WHEN 50 + (fs.session_length_zscore * 20) > 100 THEN 100 ELSE 50 + (fs.session_length_zscore * 20) END
-      WHEN fs.session_length_zscore < -2 THEN 100  -- Very short sessions are also suspicious
+      WHEN fs.session_length_zscore >= 3.0 THEN 100.0
+      WHEN fs.session_length_zscore >= 2.5 THEN 99.4
+      WHEN fs.session_length_zscore >= 2.0 THEN 97.7
+      WHEN fs.session_length_zscore >= 1.5 THEN 93.3
+      WHEN fs.session_length_zscore >= 1.0 THEN 84.1
+      WHEN fs.session_length_zscore >= 0.5 THEN 69.1
+      WHEN fs.session_length_zscore > 0 THEN 50.0 + (fs.session_length_zscore * 20.0)  -- Linear for small Z
+      WHEN fs.session_length_zscore <= @session_length_negative_threshold THEN 100.0  -- Very short sessions are suspicious
       ELSE 0.0
     END,
     sessions_per_day_percentile = CASE 
-      WHEN fs.sessions_per_day_zscore > 0 THEN CASE WHEN 50 + (fs.sessions_per_day_zscore * 20) > 100 THEN 100 ELSE 50 + (fs.sessions_per_day_zscore * 20) END
+      WHEN fs.sessions_per_day_zscore >= 3.0 THEN 100.0
+      WHEN fs.sessions_per_day_zscore >= 2.5 THEN 99.4
+      WHEN fs.sessions_per_day_zscore >= 2.0 THEN 97.7
+      WHEN fs.sessions_per_day_zscore >= 1.5 THEN 93.3
+      WHEN fs.sessions_per_day_zscore >= 1.0 THEN 84.1
+      WHEN fs.sessions_per_day_zscore >= 0.5 THEN 69.1
+      WHEN fs.sessions_per_day_zscore > 0 THEN 50.0 + (fs.sessions_per_day_zscore * 20.0)  -- Linear for small Z
       ELSE 0.0
     END
   FROM #fraud_scores fs;
@@ -391,6 +485,10 @@ BEGIN
   -- ========================================================================
   -- STEP 4: CALCULATE COMPOSITE FRAUD RISK SCORE
   -- ========================================================================
+  -- Formula: Sum of (percentile * weight / 100) for each factor, plus multi-factor bonus
+  -- Percentiles are 0-100, weights are normalized to sum to 100
+  -- Dividing by 100 converts percentile to 0-1 scale, then multiplying by weight gives contribution
+  -- Final score is capped at 100 (line 417)
   
   UPDATE fs
   SET fraud_risk_score = CAST(ROUND(
@@ -399,7 +497,9 @@ BEGIN
     (fs.odd_hours_percentile * @w_odd_hours / 100.0) +
     (fs.session_length_percentile * @w_session_length / 100.0) +
     (fs.sessions_per_day_percentile * @w_sessions_per_day / 100.0) +
-    -- Multi-factor bonus
+    -- Multi-factor bonus: checks door mismatch, ping-pong, and odd hours (primary fraud indicators)
+    -- Note: session_length and sessions_per_day are not included in multi-factor bonus
+    -- as they are considered secondary indicators
     CASE 
       WHEN fs.door_mismatch_percentile >= @multi_factor_threshold_percentile AND
            fs.pingpong_percentile >= @multi_factor_threshold_percentile AND
